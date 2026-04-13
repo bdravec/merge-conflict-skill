@@ -85,6 +85,33 @@ File size (in bytes) of the conflicted source files serves as a proxy for code c
 
 Python files are on average larger than Java files. The high maximum values indicate that some samples involve very large source files. This is relevant for LLM evaluation: models with limited context windows may be unable to process the largest files in their entirety, which may require filtering or truncation strategies in the experimental setup.
 
+### Conflict Region Size
+
+The conflict region is the section of the file between the `<<<<<<< a` and `>>>>>>> b` markers — the part the model must actually resolve. Measured across all Python samples in the tiny dataset:
+
+| Statistic | Value |
+|---|---|
+| Count | 3,604 |
+| Min | 4 lines |
+| Max | 13,062 lines |
+| Average | 65.5 lines |
+| Median | 9 lines |
+
+The median conflict region is only 9 lines, but the distribution is heavily right-skewed — a small number of samples contain extremely large conflict regions that pull the average to 65.5 lines. For LLM evaluation, very large conflict regions may exceed practical prompt size limits and warrant filtering or separate analysis as an outlier category.
+
+### Tiny vs. Full Dataset: Conflict Regions per File
+
+To quantify the difference in complexity between the tiny and full datasets, a sample of 200 Python files from the full dataset was inspected for the number of conflict regions per file:
+
+| Statistic | Value |
+|---|---|
+| Min regions per file | 1 |
+| Max regions per file | 84 |
+| Average regions per file | 4.27 |
+| Median regions per file | 2 |
+
+The median file in the full dataset contains 2 conflict regions, and some files contain up to 84. This confirms that the full dataset captures substantially more complex scenarios. The tiny dataset, by restricting to single-region files, trades realism for experimental cleanliness — a deliberate choice for this thesis (see also: Critical Perspective on the Dataset).
+
 ---
 
 ## Conflict Type Taxonomy
