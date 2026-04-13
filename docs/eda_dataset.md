@@ -171,6 +171,41 @@ The result is always between 0.0 (completely different) and 1.0 (identical).
 
 **Implication for this thesis:** Edit similarity is the most straightforward metric but also the most sensitive to surface-level differences. A skill that teaches the model to format output consistently with the ground truth style could inflate this score without genuinely improving resolution quality.
 
+### Semantic Similarity
+
+Semantic similarity uses **code embeddings** — dense numerical vectors that represent the meaning of code, not its characters. Both the model-produced resolution and the ground truth are converted into vectors, and the angle between those vectors is measured using cosine similarity.
+
+**Cosine similarity:**
+```
+cosine_similarity = (A · B) / (|A| × |B|)
+```
+Result is between 0.0 and 1.0. A result of 1.0 means the vectors point in exactly the same direction — the two pieces of code are semantically equivalent according to the embedding model. 0.0 means they are completely unrelated.
+
+**What is an embedding?** An embedding model (typically a neural network trained on large amounts of code) reads the code and produces a fixed-size vector — say, 768 numbers — that encodes its "meaning". The model learns that `x + 1` and `increment(x)` should produce similar vectors, even though the characters are completely different.
+
+**Example:**
+```python
+# model output
+if mask is not None:
+    mask = mask.dimshuffle(axes)
+
+# ground truth
+if mask is not None:
+    if mask.ndim == ndim - 1:
+        mask = expand_dims(mask)
+    mask = mask.dimshuffle(axes)
+```
+Edit similarity would be low here — the texts differ substantially. But semantic similarity might still be moderate-to-high, because both snippets handle the mask in the same conditional branch and arrive at the same `dimshuffle` operation.
+
+**What it captures well:** Cases where the model produces a functionally equivalent resolution using different structure or phrasing. This is the metric most aligned with "does the code do the right thing."
+
+**What it misses:**
+- It depends entirely on the quality of the embedding model. If the embedding model has not seen certain patterns during training, its similarity judgments may be unreliable for those cases.
+- Two resolutions that are wrong in the same way can still score high against each other — or even against the ground truth, if they share the same incorrect structure.
+- It does not execute the code. A resolution that compiles and runs correctly is not distinguished from one that does not.
+
+**Implication for this thesis:** Semantic similarity is the most theoretically meaningful metric for code tasks, but also the hardest to interpret. A high score is good evidence that the model understood what the resolution should do. A low score does not necessarily mean the model failed — it may have produced a valid resolution that the embedding model does not recognize as equivalent.
+
 ---
 
 ## Critical Perspective on the Dataset
