@@ -132,13 +132,44 @@ For each sample, the ground truth resolution is the `resolved/` file from `raw_d
 
 The ConGra evaluation pipeline compares a model-produced resolution against the ground truth using three metrics:
 
-| Metric | Description |
-|---|---|
-| **Edit similarity** | Normalized character-level edit distance between resolution and ground truth |
-| **Semantic similarity** | Cosine similarity between code embeddings of resolution and ground truth |
-| **Winnowing similarity** | Fingerprinting-based structural similarity between resolution and ground truth |
+| Metric | Captures | Blind to |
+|---|---|---|
+| **Edit similarity** | Textual closeness — how few character-level edits separate the two files | Semantically equivalent code expressed differently (different variable names, formatting, structure) |
+| **Semantic similarity** | Meaning — whether the two files do the same thing, even if expressed differently | Logical correctness; two wrong resolutions can be semantically similar to each other |
+| **Winnowing similarity** | Structural overlap — shared code fingerprints regardless of surface variation | Fine-grained textual differences; may miss small but semantically important changes |
 
 A resolution is considered correct when at least one metric exceeds the 80% threshold, following the ConGra evaluation protocol.
+
+### Edit Similarity
+
+Edit similarity is based on **Levenshtein distance** — the minimum number of single-character operations (insertions, deletions, substitutions) needed to transform one string into another.
+
+**Example:**
+```
+model output:  "if mask is not None:"
+ground truth:  "if mask is None:"
+```
+Edit distance = 4 (delete " not") → very close.
+
+```
+model output:  "return x + 1"
+ground truth:  "return x * factor"
+```
+Edit distance = much larger → far apart.
+
+**Normalization:** Raw edit distance depends on file length — a distance of 50 means something different for a 100-line file vs. a 5000-line file. It is therefore normalized as:
+
+```
+edit_similarity = 1 - (edit_distance / max(len(output), len(ground_truth)))
+```
+
+The result is always between 0.0 (completely different) and 1.0 (identical).
+
+**What it captures well:** Resolutions that are textually close to the ground truth — same words, same order, minor differences.
+
+**What it misses:** A resolution can be semantically correct but score low if it uses different variable names, different formatting, or expresses the same logic differently. Conversely, it can score high by being textually similar to the ground truth while being logically wrong.
+
+**Implication for this thesis:** Edit similarity is the most straightforward metric but also the most sensitive to surface-level differences. A skill that teaches the model to format output consistently with the ground truth style could inflate this score without genuinely improving resolution quality.
 
 ---
 
