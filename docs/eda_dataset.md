@@ -71,6 +71,20 @@ Each sample is identified by a unique hex hash. No duplicate hash IDs were found
 
 Every sample in the tiny dataset contains exactly one conflict region (the third field of `meta_list.txt` is always `1`). Conflict markers (`<<<<<<< a`, `=======`, `>>>>>>> b`) are present and well-formed in all inspected files.
 
+### File Size Distribution
+
+File size (in bytes) of the conflicted source files serves as a proxy for code complexity. Measured across the Python and Java subsets of the tiny dataset:
+
+| Statistic | Python | Java |
+|---|---|---|
+| Count | 3,604 | 3,916 |
+| Min | 70 B | 459 B |
+| Max | 1,120,517 B (~1.1 MB) | 1,257,792 B (~1.2 MB) |
+| Average | 54,436 B (~53 KB) | 23,560 B (~23 KB) |
+| Median | 26,258 B (~26 KB) | 6,552 B (~6 KB) |
+
+Python files are on average larger than Java files. The high maximum values indicate that some samples involve very large source files. This is relevant for LLM evaluation: models with limited context windows may be unable to process the largest files in their entirety, which may require filtering or truncation strategies in the experimental setup.
+
 ---
 
 ## Conflict Type Taxonomy
