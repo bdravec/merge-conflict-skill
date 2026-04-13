@@ -142,6 +142,40 @@ A resolution is considered correct when at least one metric exceeds the 80% thre
 
 ---
 
+## Critical Perspective on the Dataset
+
+### The Ground Truth Problem
+
+ConGra uses the resolution committed by the original developer as the ground truth — the reference against which all model outputs are measured. This is a practical and widely adopted convention, but it carries an important limitation: **merge conflict resolution is not a function with a single correct output**.
+
+When two branches modify the same code in incompatible ways, multiple resolutions may be semantically valid. Different developers, with different intentions or architectural views, may resolve the same conflict differently and both be correct. The committed resolution reflects one developer's judgment at one point in time — it is not a universal truth, but a plausible outcome among potentially several.
+
+This means that a model resolution which differs from the ground truth may still be functionally correct, and will nonetheless be penalized by the similarity metrics. Conversely, a resolution that scores above the 80% threshold may be textually close to the ground truth but logically wrong in ways the metrics cannot detect. The evaluation framework measures proximity to one human decision, not correctness in a deeper sense.
+
+This limitation is not unique to ConGra — it is a fundamental challenge in any benchmark that uses human-produced artifacts as ground truth for open-ended tasks. It should be kept in mind when interpreting results, particularly when differences between conditions (skill vs. no skill, small vs. large model) are small.
+
+### Tiny Dataset vs. Full Dataset
+
+The choice to use `congra_tiny_datasets` rather than `congra_full_datasets` has methodological consequences worth making explicit.
+
+**Advantages of the tiny dataset:**
+- Each file contains exactly one conflict region, making the task unambiguous: the model receives one conflicted file and must produce one resolved file.
+- Evaluation is clean and directly comparable across samples — there is no need to identify or align multiple conflict regions within a single file.
+- The controlled setting is better suited to isolating the effect of skill injection, which is the primary research question of this thesis.
+
+**Limitations compared to the full dataset:**
+- Real-world merge conflicts frequently involve multiple conflict regions within a single file. A developer resolving such a file must reason about all regions in context, as they may interact. The tiny dataset removes this complexity entirely.
+- By filtering to single-conflict files, the tiny dataset may be systematically biased toward simpler cases. Files with many conflicts are excluded, potentially underrepresenting the most challenging and practically relevant scenarios.
+- Results obtained on the tiny dataset may therefore overestimate model performance relative to what would be observed in realistic, multi-conflict settings.
+
+### Dataset Scope and Generalizability
+
+ConGra draws from a specific set of open-source Python and Java projects. The sample counts are large (over 7,500 samples for the two languages used in this thesis), which supports statistical analysis, but the dataset reflects the conflict patterns of those particular projects and their contributor communities. Generalization to other languages, proprietary codebases, or different development workflows cannot be assumed without further study.
+
+Additionally, the conflict type classification (text, syntax, functional) is determined automatically. Classification errors, while expected to be rare at scale, may introduce noise into the per-type analysis used to answer RQ2.
+
+---
+
 ## Reference
 
 Zhang, Y. et al. (2024). *ConGra: Benchmarking Automatic Conflict Resolution*. NeurIPS 2024 Datasets and Benchmarks Track. https://github.com/HKU-System-Security-Lab/ConGra
