@@ -8,6 +8,24 @@ The dataset is available at: https://github.com/HKU-System-Security-Lab/ConGra
 
 ---
 
+## Exploratory Data Analysis
+
+### Tiny Dataset — Sample Counts per Language and Conflict Type
+
+The tiny dataset contains 14,800 samples across four programming languages and seven conflict type categories:
+
+| Language | text | sytx | func | text+sytx | text+func | sytx+func | text+sytx+func | **Total** |
+|---|---|---|---|---|---|---|---|---|
+| C | 348 | 1,451 | 2,159 | 380 | 403 | 413 | 468 | **5,622** |
+| C++ | 113 | 238 | 410 | 87 | 177 | 212 | 421 | **1,658** |
+| Java | 1,151 | 843 | 849 | 77 | 62 | 622 | 312 | **3,916** |
+| Python | 822 | 447 | 555 | 81 | 663 | 128 | 908 | **3,604** |
+| **Total** | **2,434** | **2,979** | **3,973** | **625** | **1,305** | **1,375** | **2,109** | **14,800** |
+
+This thesis uses the Python and Java subsets only (7,520 samples total). C and C++ are excluded as they fall outside the scope of the evaluation.
+
+---
+
 ## Conflict Type Taxonomy
 
 ConGra classifies merge conflicts into three base categories:
