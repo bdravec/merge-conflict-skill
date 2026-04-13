@@ -51,6 +51,26 @@ The raw dataset covers **35 open-source projects** across three language groups:
 
 All projects are real-world active open-source repositories. The dataset reflects authentic conflict patterns from genuine development workflows, not synthetically generated conflicts.
 
+### Data Integrity
+
+#### Missing values
+
+All samples in the tiny dataset were checked for the presence of a corresponding `resolved/` ground truth file in `raw_datasets`. No missing resolutions were found (verified on Python/func: 555 of 555 resolved files present). The dataset is complete with respect to ground truth availability.
+
+#### Duplicates
+
+Each sample is identified by a unique hex hash. No duplicate hash IDs were found within any language, across conflict types, or across languages. The dataset contains no duplicate entries.
+
+| Check | Result |
+|---|---|
+| Duplicates within Python (across conflict types) | 0 |
+| Duplicates across all languages and types | 0 |
+| Total unique samples (tiny dataset) | 14,800 |
+
+#### Consistency
+
+Every sample in the tiny dataset contains exactly one conflict region (the third field of `meta_list.txt` is always `1`). Conflict markers (`<<<<<<< a`, `=======`, `>>>>>>> b`) are present and well-formed in all inspected files.
+
 ---
 
 ## Conflict Type Taxonomy
