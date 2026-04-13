@@ -24,6 +24,33 @@ The tiny dataset contains 14,800 samples across four programming languages and s
 
 This thesis uses the Python and Java subsets only (7,520 samples total). C and C++ are excluded as they fall outside the scope of the evaluation.
 
+### Full Dataset — Sample Counts per Language
+
+The full dataset allows multiple conflict regions per file and contains 31,613 samples — approximately 2.1× more than the tiny dataset:
+
+| Language | Total samples |
+|---|---|
+| C | 10,659 |
+| C++ | 4,059 |
+| Java | 7,818 |
+| Python | 9,077 |
+| **Total** | **31,613** |
+
+The larger size of the full dataset reflects files that were excluded from the tiny dataset because they contained more than one conflict region. These multi-region files represent more complex, realistic conflict scenarios.
+
+### Source Projects
+
+The raw dataset covers **35 open-source projects** across three language groups:
+
+| Language group | Number of projects |
+|---|---|
+| C / C++ | 14 |
+| Java | 12 |
+| Python | 9 |
+| **Total** | **35** |
+
+All projects are real-world active open-source repositories. The dataset reflects authentic conflict patterns from genuine development workflows, not synthetically generated conflicts.
+
 ---
 
 ## Conflict Type Taxonomy
