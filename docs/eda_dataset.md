@@ -340,6 +340,44 @@ The choice to use `congra_tiny_datasets` rather than `congra_full_datasets` has 
 - By filtering to single-conflict files, the tiny dataset may be systematically biased toward simpler cases. Files with many conflicts are excluded, potentially underrepresenting the most challenging and practically relevant scenarios.
 - Results obtained on the tiny dataset may therefore overestimate model performance relative to what would be observed in realistic, multi-conflict settings.
 
+### Pipeline Limitations Discovered During Smoke Testing
+
+Running the evaluation pipeline against known inputs revealed two issues that are important to account for in the experimental setup.
+
+#### The Winnowing Bug: Empty Resolution Scores as Perfect
+
+`metric_winnowing` in `metrics.py` contains the following logic:
+
+```python
+elif len(gen_str) == 0 or len(standard_str) == 0:
+    return 1
+```
+
+When the model produces an **empty string** as its resolution, winnowing returns `1.0` — a perfect score. The smoke test confirmed this:
+
+| Case | Edit similarity | Winnowing | Verdict |
+|---|---|---|---|
+| Perfect (ground truth) | 1.0000 | 1.0000 | PASS |
+| **Empty string** | **0.0000** | **1.0000** | **PASS** |
+| Dummy ("pass") | 0.0296 | 0.0000 | fail |
+
+An empty resolution passing the 80% threshold via winnowing is incorrect behavior — a model that outputs nothing has not resolved the conflict. The value `1` here appears to be intended as a sentinel for "incomparable" rather than "perfect match", but in practice it inflates scores.
+
+**When can an empty resolution occur in practice?**
+
+Modern LLMs almost always produce some output, so this edge case may seem unlikely. However, empty resolutions can still occur in the ConGra pipeline in at least two realistic scenarios:
+
+1. **Context window overflow**: if the conflicted file exceeds the model's token limit, `main.py` sets the resolution to `""` explicitly (the `processable_flag = False` branch).
+2. **Failed code block extraction**: `main.py` calls `extract_code_block()` to parse the model's response. If the model does not wrap its answer in the expected ` ```language ... ``` ` format, the extraction returns `""` — even though the model produced output.
+
+**Mitigation**: empty resolutions should be explicitly filtered out before computing metrics, and should be counted separately as a "no output" category rather than being scored.
+
+#### Semantic Similarity Is Not Wired Into the Pipeline
+
+The ConGra paper describes three evaluation metrics: edit similarity, semantic similarity, and winnowing similarity. However, `main.py` only computes and records edit similarity and winnowing. The `compute_code_similarity` function — which computes cosine similarity between code embeddings — is defined in `metrics.py` but never called from `main.py`.
+
+This means the semantic similarity scores reported in the ConGra paper were likely computed separately, or the pipeline was updated after publication without keeping `main.py` in sync. For this thesis, semantic similarity will need to be added explicitly if it is to be included in the evaluation.
+
 ### Dataset Scope and Generalizability
 
 ConGra draws from a specific set of open-source Python and Java projects. The sample counts are large (over 7,500 samples for the two languages used in this thesis), which supports statistical analysis, but the dataset reflects the conflict patterns of those particular projects and their contributor communities. Generalization to other languages, proprietary codebases, or different development workflows cannot be assumed without further study.
