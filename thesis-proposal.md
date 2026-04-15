@@ -17,7 +17,13 @@ AI agents are increasingly used for software engineering tasks, but often lack t
 
 Despite rapid ecosystem adoption, no skills exist for software engineering tasks, and no empirical evaluation of skill effectiveness has been published. This thesis addresses both gaps.
 
-The core insight motivating this work: **agents are the delivery vehicle; skills are the knowledge.** Any agent that loads a SKILL.md skill benefits directly from the quality of that skill's content. By validating skill effectiveness at the LLM level — through controlled experiments with and without skill injection — this thesis provides a foundational answer: does the skill content actually help? If yes, every agent in the agentskills.io ecosystem that uses this skill inherits that benefit automatically.
+**Broader relevance.** The question of whether structured, human-authored knowledge can meaningfully improve LLM performance is not only a technical one — it carries practical implications for how organizations will interact with AI systems at scale. Gartner predicts that by 2028, 33% of enterprise software applications will include agentic AI, up from less than 1% in 2024, and that at least 15% of day-to-day work decisions will be made autonomously through such systems (Gartner, 2025a). Gartner further predicts that by 2029, at least 50% of knowledge workers will develop new skills to work with, govern, or create AI agents on demand (Gartner, 2025b). In this emerging landscape, the bottleneck is not model capability alone, but the ability to supply agents with the right domain knowledge at the right time.
+
+Skills address this bottleneck by decoupling *what an agent knows* from *how an agent works*. A domain expert who understands a business process — but not the internals of language models — can author a skill that encodes that process; the agent then executes it. This mirrors the broader "citizen developer" trend, where non-technical users increasingly build and maintain applications using low-code tools. Skills extend this logic to AI agents: they are, in effect, a natural-language interface for shaping LLM behavior through procedural descriptions rather than fine-tuning or code.
+
+The scientific basis for this approach draws on research in in-context knowledge injection. A recent survey identifies several injection methods, including retrieval-augmented generation (RAG), instruction tuning, and knowledge prompting — the approach of transforming external knowledge into textual prompts without retraining the model (Li et al., 2025). Ovadia et al. (2024) compared fine-tuning and RAG for knowledge injection and found that RAG — which, like skills, provides knowledge at inference time — consistently outperformed unsupervised fine-tuning. In practitioner communities, Miessler (2024) has argued that business AI should be understood as the automation of *intelligence pipelines* — sequences of judgment tasks previously requiring human expertise — and that the quality of the scaffolding surrounding a model often matters more than model intelligence itself, reporting cases where a well-structured context enabled smaller models to outperform larger ones (Miessler, 2025).
+
+This thesis contributes to this emerging picture with controlled empirical evidence. The core insight motivating the work is straightforward: **agents are the delivery vehicle; skills are the knowledge.** Any agent that loads a SKILL.md skill benefits directly from the quality of that skill's content. By validating skill effectiveness at the LLM level — through controlled experiments with and without skill injection — this thesis provides a foundational answer: does the skill content actually help? If yes, every agent in the agentskills.io ecosystem that uses this skill inherits that benefit automatically. And if structured, portable domain knowledge measurably improves performance, this strengthens the case for skills as a scalable mechanism through which domain experts — not only AI engineers — can shape agent behavior.
 
 ---
 
@@ -163,6 +169,13 @@ Summary of findings and open questions. Suggested future directions:
 
 - Zhang et al. (2024). *ConGra: Benchmarking Automatic Conflict Resolution.* NeurIPS 2024 Datasets & Benchmarks.
 - Swiss AI (2025). *Apertus: A Fully Open, Transparent, Multilingual Language Model.* ETH Zurich / EPFL / CSCS.
+- Ovadia, O., Brief, M., Mishaeli, M. & Elisha, O. (2024). *Fine-Tuning or Retrieval? Comparing Knowledge Injection in LLMs.* EMNLP 2024, pp. 237–250.
+- Li, X. et al. (2025). *Injecting Domain-Specific Knowledge into Large Language Models: A Comprehensive Survey.* arXiv:2502.10708.
+- Kujanpää, K. et al. (2024). *Efficient Knowledge Injection in LLMs via Self-Distillation.* arXiv:2412.14964.
+- Gartner (2025a). *Gartner Predicts Over 40% of Agentic AI Projects Will Be Canceled by End of 2027.* Press release, June 2025.
+- Gartner (2025b). *Gartner Predicts 40% of Enterprise Apps Will Feature Task-Specific AI Agents by 2026.* Press release, August 2025.
+- Miessler, D. (2024). *Business AI Is the Automation of Intelligence Tasks.* danielmiessler.com/blog.
+- Miessler, D. (2025). *Building a Personal AI Infrastructure.* danielmiessler.com/blog.
 - agentskills.io specification — https://agentskills.io/specification
 - Hermes Agent — https://hermes-agent.org
 - ConGra GitHub — https://github.com/HKU-System-Security-Lab/ConGra
