@@ -29,7 +29,7 @@ This thesis contributes to this emerging picture with controlled empirical evide
 
 ## 2. Research Questions
 
-**RQ1:** Does a domain-specific SKILL.md improve agent performance on merge conflict resolution compared to no skill?
+**RQ1:** Does a domain-specific SKILL.md improve LLM performance on merge conflict resolution compared to no skill?
 
 **RQ2:** Does the effect vary by conflict complexity (text → syntax → functional)?
 
