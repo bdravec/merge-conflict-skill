@@ -122,28 +122,29 @@ Note: the empty string case passes via winnowing — this is a known bug in the 
 
 ### Full pipeline (with LLM via vLLM)
 
-First, serve a model using vLLM:
+First, serve a model using vLLM (only one model fits in VRAM at a time):
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python -m vllm.entrypoints.openai.api_server \
-  --model <model_name> \
-  --port 1234 \
-  --gpu-memory-utilization 0.97
+export HF_HUB_OFFLINE=1
+source /home/baebs/thesis/vllm-env/bin/activate
+
+# Qwen3-8B
+vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 32768
+
+# Apertus-8B
+vllm serve swiss-ai/Apertus-8B-Instruct-2509 --port 8000 --max-model-len 32768
 ```
 
-Then run the pipeline:
+To switch models, stop the running server first: `pkill -f "vllm serve"`
+
+> **Note:** ConGra's `main.py` does not support Qwen3 or Apertus (hardcoded model routing in `utils.py`). Use the standalone pilot script instead:
 
 ```bash
-cd ConGra/src
-python main.py \
-  --llm_model <model_name> \
-  --temperature 0.7 \
-  --language python \
-  --worker 1 \
-  --type func
+source /home/baebs/thesis/vllm-env/bin/activate
+python scripts/pilot.py
 ```
 
-Results are saved to `ConGra/output/<language>/<type>/<model>_<temperature>/resolutions.jsonl`.
+Results are saved to `scripts/results/pilot_results.jsonl`. See `docs/vllm_setup.md` for full setup details.
 
 ---
 
