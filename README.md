@@ -135,6 +135,12 @@ vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 32768
 vllm serve swiss-ai/Apertus-8B-Instruct-2509 --port 8000 --max-model-len 32768
 ```
 
+Wait for `Application startup complete` in the terminal, then verify it's responding:
+
+```bash
+curl -s http://localhost:8000/v1/models | python3 -m json.tool
+```
+
 To switch models, stop the running server first: `pkill -f "vllm serve"`
 
 > **Note:** ConGra's `main.py` does not support Qwen3 or Apertus (hardcoded model routing in `utils.py`). Use the standalone pilot script instead:
