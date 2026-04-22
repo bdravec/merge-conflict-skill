@@ -165,8 +165,8 @@ Each line of `resolutions.jsonl` is a JSON object with the following fields:
 | `conflict` | The conflicted region shown to the model |
 | `resolution` | The model's output |
 | `resolved_text` | The ground truth resolution |
-| `edit_distance` | Edit similarity score (0.0–1.0) |
-| `winnowing` | Winnowing similarity score (0.0–1.0) |
+| `edit_distance` | Edit similarity: character-level Levenshtein distance, normalised to 0.0–1.0 |
+| `winnowing` | Winnowing similarity: fingerprint overlap (Dice over character 5-gram hashes), robust to whitespace and reordering (0.0–1.0) |
 | `fix_time` | Time taken to generate the resolution (seconds) |
 | `context_line` | Number of context lines provided to the model |
 | `completion_tokens` | Output tokens used |

@@ -312,6 +312,42 @@ Edit similarity would be low here — the texts differ substantially. But semant
 
 **Implication for this thesis:** Semantic similarity is the most theoretically meaningful metric for code tasks, but also the hardest to interpret. A high score is good evidence that the model understood what the resolution should do. A low score does not necessarily mean the model failed — it may have produced a valid resolution that the embedding model does not recognize as equivalent.
 
+### Winnowing Similarity
+
+Winnowing similarity is a fingerprint-based overlap metric originally developed for plagiarism detection (the MOSS system). It works at the character level using the following pipeline:
+
+**Step 1 — Character k-grams.** The text is broken into overlapping sequences of 5 consecutive characters. For example, `"return x"` produces `["retur", "eturn", "turn ", "urn x"]`.
+
+**Step 2 — Hashing.** Each k-gram is hashed to a short integer (SHA1, last 4 hex digits). This converts character sequences into a stream of hash values.
+
+**Step 3 — Sliding windows.** The hash stream is scanned with a window of size 4. Within each window, only the minimum hash is kept (ties broken in favour of the rightmost position). These minima are the document's **fingerprints** — a compact, representative set of values that capture the document's structure.
+
+**Step 4 — Similarity.** Fingerprints from both strings are compared using the Dice coefficient:
+
+```
+winnowing_similarity = 2 × |shared fingerprints| / (|fingerprints_A| + |fingerprints_B|)
+```
+
+Two documents with many shared fingerprints score close to 1.0; documents with no shared fingerprints score 0.0.
+
+**What it captures well:** Shared structural patterns that survive minor surface variation — reordered lines, whitespace differences, or small insertions. Because it operates on character 5-grams rather than whole tokens or lines, it is sensitive to local code patterns (`mask.`, `return`, `self.`) that tend to recur in correct resolutions.
+
+**What it misses:** Small but semantically critical differences. A single character change — `+` vs `-`, `>` vs `>=`, `and` vs `or` — may not shift enough fingerprints to lower the score, even though it changes program behaviour entirely. Winnowing cannot distinguish a semantically wrong resolution from a correct one if the character-level structure is similar.
+
+**Example:**
+```python
+# model output
+return x + 1
+
+# ground truth
+return x - 1
+```
+Edit similarity would be very high (one character differs). Winnowing similarity would also be high — `"return x "`, `"eturn x "`, and other k-grams are shared, and the one differing k-gram (`"x + 1"` vs `"x - 1"`) may not be a fingerprint at all if a lower hash exists in the same window.
+
+**Implication for this thesis:** Winnowing is more robust to formatting and ordering noise than edit similarity, and faster to compute than semantic similarity. However, it is the most forgiving of logical errors. The ConGra evaluation uses it alongside edit similarity rather than alone, and the 0.80 threshold applies to either metric — so a high winnowing score alone can mark a resolution as correct even if edit similarity is low.
+
+**Known bug:** `metric_winnowing("", ground_truth)` returns `1.0` instead of `0.0` — an empty resolution scores as perfect. See *Pipeline Limitations* below.
+
 ---
 
 ## Critical Perspective on the Dataset
