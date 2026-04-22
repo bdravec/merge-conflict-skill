@@ -115,10 +115,12 @@ DATA_ROOT   = os.path.join(CONGRA_ROOT, "data", "congra_tiny_datasets", "python"
 RAW_ROOT    = os.path.join(CONGRA_ROOT, "data", "raw_datasets")
 SKILL_PATH  = os.path.join(REPO_ROOT, "skills", "merge-conflict-resolve-v1", "SKILL.md")
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
-RESULTS_FILE = os.path.join(RESULTS_DIR, "pilot_results.jsonl")
+# RESULTS_FILE = os.path.join(RESULTS_DIR, "pilot_results.jsonl")
+RESULTS_FILE = os.path.join(RESULTS_DIR, "pilot_results_apertus.jsonl")
 
 # ── Config ───────────────────────────────────────────────────────────────────
-MODEL_ID      = "Qwen/Qwen3-8B"
+# MODEL_ID      = "Qwen/Qwen3-8B"
+MODEL_ID      = "swiss-ai/Apertus-8B-Instruct-2509"
 VLLM_BASE_URL = "http://localhost:8000/v1"
 TEMPERATURE   = 0.0   # deterministic for reproducibility
 MAX_TOKENS    = 2048

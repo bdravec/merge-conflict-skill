@@ -10,7 +10,8 @@ import os
 from collections import defaultdict
 from statistics import mean, median
 
-RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results", "pilot_results.jsonl")
+# RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results", "pilot_results.jsonl")
+RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results", "pilot_results_apertus.jsonl")
 
 
 def main():
