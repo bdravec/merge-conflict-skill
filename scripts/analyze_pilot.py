@@ -1,26 +1,36 @@
 """
-analyze_pilot.py — Summarize pilot evaluation results from pilot_results.jsonl
+analyze_pilot.py — Summarize pilot evaluation results
 
 Usage:
-    python scripts/analyze_pilot.py
+    python scripts/analyze_pilot.py --model qwen3
+    python scripts/analyze_pilot.py --model apertus
 """
 
+import argparse
 import json
 import os
 from collections import defaultdict
 from statistics import mean, median
 
-# RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results", "pilot_results.jsonl")
-RESULTS_FILE = os.path.join(os.path.dirname(__file__), "results", "pilot_results_apertus.jsonl")
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
+
+RESULT_FILES = {
+    "qwen3":   "pilot_results_qwen3.jsonl",
+    "apertus": "pilot_results_apertus.jsonl",
+}
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", required=True, choices=list(RESULT_FILES.keys()))
+    args = parser.parse_args()
+
+    results_file = os.path.join(RESULTS_DIR, RESULT_FILES[args.model])
     records = []
-    with open(RESULTS_FILE) as f:
+    with open(results_file) as f:
         for line in f:
             records.append(json.loads(line))
 
-    # Group by condition
     scores = defaultdict(lambda: {"edit": [], "winnowing": []})
     errors = defaultdict(int)
     empty  = defaultdict(int)
@@ -38,17 +48,16 @@ def main():
             scores[r["condition"]]["edit"].append(m["edit"])
             scores[r["condition"]]["winnowing"].append(m["winnowing"])
 
-    # Cases with identical output across conditions
     def outputs_identical(conds):
         vals = list(conds.values())
-        return vals[0]["metrics"]["edit"] == vals[1]["metrics"]["edit"]
+        return vals[0]["resolution"].strip() == vals[1]["resolution"].strip()
 
     identical = sum(1 for conds in cases.values() if len(conds) == 2 and outputs_identical(conds))
 
     n_cases = len(cases)
     conditions = sorted(scores.keys())
 
-    print(f"Pilot results — {n_cases} cases, {len(records)} records\n")
+    print(f"Model: {args.model}  |  {n_cases} cases, {len(records)} records\n")
     print(f"{'Condition':<12} {'N':>4}  {'Edit mean':>10} {'Edit med':>9}  {'Winn mean':>10} {'Winn med':>9}  {'Empty':>6} {'Errors':>7}")
     print("-" * 80)
     for cond in conditions:
@@ -61,9 +70,8 @@ def main():
             f"{empty[cond]:>6} {errors[cond]:>7}"
         )
 
-    print(f"\nIdentical outputs across both conditions: {identical}/{n_cases} cases")
+    print(f"\nIdentical outputs (same resolution text): {identical}/{n_cases} cases")
 
-    # Per-case delta (skill-v1 minus no-skill), positive = skill better
     print("\nPer-case edit distance delta (skill-v1 − no-skill), positive = skill better:")
     for key, conds in sorted(cases.items()):
         ns_edit = conds.get("no-skill", {}).get("metrics", {}).get("edit")
@@ -71,7 +79,9 @@ def main():
         if ns_edit is not None and sk_edit is not None:
             delta = round(sk_edit - ns_edit, 4)
             marker = " ↑" if delta > 0 else (" ↓" if delta < 0 else "  =")
-            print(f"  {key[0]}  Δedit={delta:+.4f}{marker}")
+            same = outputs_identical(conds)
+            tag = " [identical]" if same else ""
+            print(f"  {key[0]}  Δedit={delta:+.4f}{marker}{tag}")
 
 
 if __name__ == "__main__":

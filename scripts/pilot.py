@@ -5,19 +5,13 @@ Runs a small subset of ConGra cases through two conditions:
   - no-skill: default ConGra system prompt
   - skill-v1: SKILL.md content as system message
 
-For each case × condition, calls the local vLLM server (OpenAI-compatible API),
-extracts the resolution, scores it with edit distance and winnowing similarity,
-and writes results to JSONL.
-
 Usage:
-    # Start vLLM in a separate terminal first:
-    #   vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 32768
     source /home/baebs/thesis/vllm-env/bin/activate
-    python scripts/pilot.py
-
-Output: scripts/results/pilot_results.jsonl
+    python scripts/pilot.py --model qwen3
+    python scripts/pilot.py --model apertus
 """
 
+import argparse
 import os
 import json
 import re
@@ -25,6 +19,23 @@ import time
 from hashlib import sha1
 
 from openai import OpenAI
+
+
+# ── Model configs ─────────────────────────────────────────────────────────────
+
+MODELS = {
+    "qwen3": {
+        "model_id":    "Qwen/Qwen3-8B",
+        "results_file": "pilot_results_qwen3.jsonl",
+        # Disable chain-of-thought thinking mode for cleaner output
+        "extra_body":  {"chat_template_kwargs": {"enable_thinking": False}},
+    },
+    "apertus": {
+        "model_id":    "swiss-ai/Apertus-8B-Instruct-2509",
+        "results_file": "pilot_results_apertus.jsonl",
+        "extra_body":  {},
+    },
+}
 
 
 # ── Inlined from ConGra/src/metrics.py ───────────────────────────────────────
@@ -107,20 +118,13 @@ def load_conflict_and_answer(source_path: str, file_path: str, k: int, n: int):
 
     return conflict_context, conflict_text, resolved_text
 
+
 # ── Paths ────────────────────────────────────────────────────────────────────
 REPO_ROOT   = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONGRA_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../ConGra"))
-
-DATA_ROOT   = os.path.join(CONGRA_ROOT, "data", "congra_tiny_datasets", "python", "func")
-RAW_ROOT    = os.path.join(CONGRA_ROOT, "data", "raw_datasets")
-SKILL_PATH  = os.path.join(REPO_ROOT, "skills", "merge-conflict-resolve-v1", "SKILL.md")
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
-# RESULTS_FILE = os.path.join(RESULTS_DIR, "pilot_results.jsonl")
-RESULTS_FILE = os.path.join(RESULTS_DIR, "pilot_results_apertus.jsonl")
 
 # ── Config ───────────────────────────────────────────────────────────────────
-# MODEL_ID      = "Qwen/Qwen3-8B"
-MODEL_ID      = "swiss-ai/Apertus-8B-Instruct-2509"
 VLLM_BASE_URL = "http://localhost:8000/v1"
 TEMPERATURE   = 0.0   # deterministic for reproducibility
 MAX_TOKENS    = 2048
@@ -128,13 +132,14 @@ CONTEXT_LINES = 5     # lines of context around the conflict (ConGra default)
 N_CASES       = 20    # how many cases to sample from meta_list.txt
 LANGUAGE      = "python"
 
+SKILL_PATH = os.path.join(REPO_ROOT, "skills", "merge-conflict-resolve-v1", "SKILL.md")
+
 # ── ConGra default system prompt (from ConGra/src/prompt.py) ─────────────────
 CONGRA_SYSTEM_PROMPT = (
     "You are an expert in code merge conflicts, "
     "providing the merged code based on the conflict and its context."
 )
 
-# ConGra's user prompt template (simplified: always use context version)
 CONGRA_USER_TEMPLATE = """\
 Please provide the merged code based on the specified conflict and its context.
 Please provide the merged code following the chain of thought:
@@ -163,10 +168,6 @@ def load_skill_md(path: str) -> str:
 
 
 def load_meta(data_root: str, n: int) -> list[dict]:
-    """
-    Read meta_list.txt and return up to n cases as dicts.
-    Each line: source_path: hash_idx: conflict_idx
-    """
     meta_path = os.path.join(data_root, "meta_list.txt")
     cases = []
     with open(meta_path, "r") as f:
@@ -196,28 +197,24 @@ def extract_code_block(text: str) -> str:
     return ""
 
 
-def call_vllm(client: OpenAI, system_prompt: str, user_prompt: str) -> str:
-    """Send a chat completion request to vLLM and return the raw response text."""
-    response = client.chat.completions.create(
-        model=MODEL_ID,
+def call_vllm(client: OpenAI, model_id: str, system_prompt: str, user_prompt: str,
+              extra_body: dict) -> str:
+    kwargs = dict(
+        model=model_id,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt},
         ],
         temperature=TEMPERATURE,
         max_tokens=MAX_TOKENS,
-        # Disable Qwen3 chain-of-thought thinking mode for cleaner output
-        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
     )
+    if extra_body:
+        kwargs["extra_body"] = extra_body
+    response = client.chat.completions.create(**kwargs)
     return response.choices[0].message.content or ""
 
 
 def score(resolution: str, ground_truth: str) -> dict:
-    """
-    Compute edit distance and winnowing similarity.
-    Empty resolutions are flagged separately rather than scored — the winnowing
-    bug (returns 1.0 for empty strings) would otherwise inflate scores.
-    """
     if not resolution.strip():
         return {"edit": None, "winnowing": None, "empty": True}
     return {
@@ -227,28 +224,74 @@ def score(resolution: str, ground_truth: str) -> dict:
     }
 
 
-def main():
-    os.makedirs(RESULTS_DIR, exist_ok=True)
+def prompt_echo_check(client: OpenAI, model_id: str, extra_body: dict) -> bool:
+    """
+    Sanity check: send a trivial request with a distinctive system prompt and
+    confirm the model acknowledges it. Warns if the system prompt appears to be
+    ignored. Returns True if the check passes.
+    """
+    marker = "SYSTEM_PROMPT_ECHO_TEST_XK9"
+    try:
+        response = call_vllm(
+            client, model_id,
+            system_prompt=f"Always begin your reply with the token: {marker}",
+            user_prompt="Say hello.",
+            extra_body=extra_body,
+        )
+        if marker in response:
+            print(f"  [prompt-echo] PASS — model acknowledged system prompt")
+            return True
+        else:
+            print(f"  [prompt-echo] WARN — system prompt may be ignored (marker not found in: {response[:100]!r})")
+            return False
+    except Exception as e:
+        print(f"  [prompt-echo] ERROR — {e}")
+        return False
 
-    print(f"Loading SKILL.md from {SKILL_PATH}")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", required=True, choices=list(MODELS.keys()),
+                        help="Model to evaluate")
+    parser.add_argument("--data-root", default=None,
+                        help="Override path to congra_tiny_datasets/<lang>/<type>")
+    args = parser.parse_args()
+
+    cfg = MODELS[args.model]
+    model_id    = cfg["model_id"]
+    extra_body  = cfg["extra_body"]
+    results_file = os.path.join(RESULTS_DIR, cfg["results_file"])
+
+    data_root = args.data_root or os.path.join(
+        CONGRA_ROOT, "data", "congra_tiny_datasets", "python", "func"
+    )
+
+    print(f"Model:       {model_id}")
+    print(f"Results:     {results_file}")
+    print(f"Data:        {data_root}")
+
+    print(f"\nLoading SKILL.md from {SKILL_PATH}")
     skill_system_prompt = load_skill_md(SKILL_PATH)
 
-    print(f"Loading {N_CASES} cases from {DATA_ROOT}")
-    cases = load_meta(DATA_ROOT, N_CASES)
+    print(f"Loading {N_CASES} cases from {data_root}")
+    cases = load_meta(data_root, N_CASES)
     print(f"  → {len(cases)} cases loaded")
 
     client = OpenAI(api_key="none", base_url=VLLM_BASE_URL)
+
+    print("\nRunning prompt-echo sanity check...")
+    prompt_echo_check(client, model_id, extra_body)
 
     conditions = [
         ("no-skill", CONGRA_SYSTEM_PROMPT),
         ("skill-v1", skill_system_prompt),
     ]
 
-    with open(RESULTS_FILE, "w", encoding="utf-8") as out:
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    with open(results_file, "w", encoding="utf-8") as out:
         for i, case in enumerate(cases):
-            # Build the full source path that load_conflict_and_answer expects
-            source_path = os.path.join(RAW_ROOT, case["source_path"])
-            hash_file   = os.path.join(DATA_ROOT, case["hash_idx"])
+            source_path = os.path.join(CONGRA_ROOT, "data", "raw_datasets", case["source_path"])
+            hash_file   = os.path.join(data_root, case["hash_idx"])
 
             print(f"\n[{i+1}/{len(cases)}] {case['hash_idx']} conflict #{case['conflict_idx']}")
 
@@ -271,7 +314,7 @@ def main():
                 t0 = time.time()
 
                 try:
-                    raw_response = call_vllm(client, system_prompt, user_prompt)
+                    raw_response = call_vllm(client, model_id, system_prompt, user_prompt, extra_body)
                     resolution   = extract_code_block(raw_response)
                     metrics      = score(resolution, ground_truth)
                     elapsed      = round(time.time() - t0, 2)
@@ -289,8 +332,9 @@ def main():
                     "case_id":       case["hash_idx"],
                     "conflict_idx":  case["conflict_idx"],
                     "condition":     condition_name,
-                    "model":         MODEL_ID,
+                    "model":         model_id,
                     "resolution":    resolution,
+                    "raw_response":  raw_response,
                     "ground_truth":  ground_truth,
                     "metrics":       metrics,
                     "elapsed_s":     elapsed,
@@ -299,7 +343,7 @@ def main():
                 out.write(json.dumps(record) + "\n")
                 out.flush()
 
-    print(f"\nDone. Results saved to {RESULTS_FILE}")
+    print(f"\nDone. Results saved to {results_file}")
 
 
 if __name__ == "__main__":
