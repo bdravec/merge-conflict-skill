@@ -15,9 +15,12 @@ from statistics import mean, median
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 
 RESULT_FILES = {
-    "qwen3":   "pilot_results_qwen3.jsonl",
-    "apertus": "pilot_results_apertus.jsonl",
+    "qwen3":   "pilot_results_qwen3_v2.jsonl",
+    "apertus": "pilot_results_apertus_v2.jsonl",
 }
+
+BASELINE = "no-skill"
+SKILL_CONDITIONS = ["skill-v1-sys", "skill-v1-user"]
 
 
 def main():
@@ -48,39 +51,44 @@ def main():
             scores[r["condition"]]["edit"].append(m["edit"])
             scores[r["condition"]]["winnowing"].append(m["winnowing"])
 
-    def outputs_identical(conds):
-        vals = list(conds.values())
-        return vals[0]["resolution"].strip() == vals[1]["resolution"].strip()
-
-    identical = sum(1 for conds in cases.values() if len(conds) == 2 and outputs_identical(conds))
-
     n_cases = len(cases)
     conditions = sorted(scores.keys())
 
     print(f"Model: {args.model}  |  {n_cases} cases, {len(records)} records\n")
-    print(f"{'Condition':<12} {'N':>4}  {'Edit mean':>10} {'Edit med':>9}  {'Winn mean':>10} {'Winn med':>9}  {'Empty':>6} {'Errors':>7}")
-    print("-" * 80)
+    print(f"{'Condition':<16} {'N':>4}  {'Edit mean':>10} {'Edit med':>9}  {'Winn mean':>10} {'Winn med':>9}  {'Empty':>6} {'Errors':>7}")
+    print("-" * 84)
     for cond in conditions:
         e = scores[cond]["edit"]
         w = scores[cond]["winnowing"]
         print(
-            f"{cond:<12} {len(e):>4}  "
+            f"{cond:<16} {len(e):>4}  "
             f"{mean(e):>10.4f} {median(e):>9.4f}  "
             f"{mean(w):>10.4f} {median(w):>9.4f}  "
             f"{empty[cond]:>6} {errors[cond]:>7}"
         )
 
-    print(f"\nIdentical outputs (same resolution text): {identical}/{n_cases} cases")
+    # Identical output counts per skill condition vs baseline
+    print()
+    for skill_cond in SKILL_CONDITIONS:
+        identical = sum(
+            1 for conds in cases.values()
+            if BASELINE in conds and skill_cond in conds
+            and conds[BASELINE]["resolution"].strip() == conds[skill_cond]["resolution"].strip()
+        )
+        print(f"Identical outputs ({BASELINE} vs {skill_cond}): {identical}/{n_cases} cases")
 
-    print("\nPer-case edit distance delta (skill-v1 − no-skill), positive = skill better:")
-    for key, conds in sorted(cases.items()):
-        ns_edit = conds.get("no-skill", {}).get("metrics", {}).get("edit")
-        sk_edit = conds.get("skill-v1", {}).get("metrics", {}).get("edit")
-        if ns_edit is not None and sk_edit is not None:
+    # Per-case deltas vs baseline
+    for skill_cond in SKILL_CONDITIONS:
+        print(f"\nPer-case edit delta ({skill_cond} − {BASELINE}), positive = skill better:")
+        for key, conds in sorted(cases.items()):
+            ns_edit = conds.get(BASELINE, {}).get("metrics", {}).get("edit")
+            sk_edit = conds.get(skill_cond, {}).get("metrics", {}).get("edit")
+            if ns_edit is None or sk_edit is None:
+                continue
             delta = round(sk_edit - ns_edit, 4)
             marker = " ↑" if delta > 0 else (" ↓" if delta < 0 else "  =")
-            same = outputs_identical(conds)
-            tag = " [identical]" if same else ""
+            identical = conds[BASELINE]["resolution"].strip() == conds[skill_cond]["resolution"].strip()
+            tag = " [identical]" if identical else ""
             print(f"  {key[0]}  Δedit={delta:+.4f}{marker}{tag}")
 
 
