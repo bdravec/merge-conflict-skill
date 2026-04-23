@@ -1,9 +1,10 @@
 """
-pilot.py — Pilot evaluation for Issue #8
+pilot.py — Pilot evaluation for Issues #8 / #37
 
-Runs a small subset of ConGra cases through two conditions:
-  - no-skill: default ConGra system prompt
-  - skill-v1: SKILL.md content as system message
+Runs a small subset of ConGra cases through three conditions:
+  - no-skill:      default ConGra system prompt
+  - skill-v1-sys:  SKILL.md v1 content as system message
+  - skill-v1-user: SKILL.md v1 content prepended to user message
 
 Usage:
     source /home/baebs/thesis/vllm-env/bin/activate
@@ -26,13 +27,13 @@ from openai import OpenAI
 MODELS = {
     "qwen3": {
         "model_id":    "Qwen/Qwen3-8B",
-        "results_file": "pilot_results_qwen3.jsonl",
+        "results_file": "pilot_results_qwen3_v2.jsonl",
         # Disable chain-of-thought thinking mode for cleaner output
         "extra_body":  {"chat_template_kwargs": {"enable_thinking": False}},
     },
     "apertus": {
         "model_id":    "swiss-ai/Apertus-8B-Instruct-2509",
-        "results_file": "pilot_results_apertus.jsonl",
+        "results_file": "pilot_results_apertus_v2.jsonl",
         "extra_body":  {},
     },
 }
@@ -198,12 +199,13 @@ def extract_code_block(text: str) -> str:
 
 
 def call_vllm(client: OpenAI, model_id: str, system_prompt: str, user_prompt: str,
-              extra_body: dict) -> str:
+              extra_body: dict, user_prefix: str = "") -> str:
+    full_user = f"{user_prefix}\n\n{user_prompt}" if user_prefix else user_prompt
     kwargs = dict(
         model=model_id,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_prompt},
+            {"role": "user",   "content": full_user},
         ],
         temperature=TEMPERATURE,
         max_tokens=MAX_TOKENS,
@@ -282,9 +284,12 @@ def main():
     print("\nRunning prompt-echo sanity check...")
     prompt_echo_check(client, model_id, extra_body)
 
+    # Each condition: (name, system_prompt, user_prefix)
+    # user_prefix is prepended to the user prompt when non-empty (skill-in-user injection)
     conditions = [
-        ("no-skill", CONGRA_SYSTEM_PROMPT),
-        ("skill-v1", skill_system_prompt),
+        ("no-skill",       CONGRA_SYSTEM_PROMPT, ""),
+        ("skill-v1-sys",   skill_system_prompt,  ""),
+        ("skill-v1-user",  CONGRA_SYSTEM_PROMPT, skill_system_prompt),
     ]
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -309,12 +314,12 @@ def main():
                 conflict_text=conflict_text,
             )
 
-            for condition_name, system_prompt in conditions:
+            for condition_name, system_prompt, user_prefix in conditions:
                 print(f"  condition: {condition_name} ... ", end="", flush=True)
                 t0 = time.time()
 
                 try:
-                    raw_response = call_vllm(client, model_id, system_prompt, user_prompt, extra_body)
+                    raw_response = call_vllm(client, model_id, system_prompt, user_prompt, extra_body, user_prefix)
                     resolution   = extract_code_block(raw_response)
                     metrics      = score(resolution, ground_truth)
                     elapsed      = round(time.time() - t0, 2)
