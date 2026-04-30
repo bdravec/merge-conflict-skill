@@ -175,6 +175,25 @@ The skill does not surface this mapping to the model — it would be misleading 
 
 §5.1 routes the model to one of four patterns. This section specifies the strategy each pattern triggers. The strategies are deliberately asymmetric — *pick* gets the most attention because §3.4 makes it the default operation, and *custom* gets a hard limit because it is the failure-mode-prone branch.
 
+**Section ordering: Pick → Combine → Empty → Custom.**
+
+The order in which the patterns are presented in SKILL.md is *not* the same as the identification order in §5.1, and is *not* pure frequency order. Boll's frequencies (§7.1):
+
+| Rank | Pattern | Frequency |
+|------|---------|----------:|
+| 1 | pick | ~80% |
+| 2 | custom | ~12% |
+| 3 | combine | ~5–7% |
+| 4 | empty | ~2.45% |
+
+Pure frequency order would put *custom* second. v2 deliberately does not, because §3.4 makes *custom* the last-resort escape — placing it second visually signals "this is normal", the opposite of the intended bias. Identification order (§5.1: empty → combine → pick → custom) is dictated by which patterns have positive triggers; that logic does not transfer to a reading-order decision.
+
+The mixed ordering used in SKILL.md:
+- **Pick first** — most frequent and the default operation. Both arguments agree.
+- **Combine second** — positive trigger, unambiguous when applicable. Reads naturally after pick because both are "in-distribution" operations.
+- **Empty third** — trivial and small.
+- **Custom last** — proximity to the end of the section signals "only when everything else fails". Load-bearing per §3.4 against the pilot's over-generation bias.
+
 **Pick — primary criterion: surrounding-code consistency.**
 
 The choice between side `a` and side `b` is anchored on whether the file remains coherent after the chunk is replaced. Three signals, in priority order:
