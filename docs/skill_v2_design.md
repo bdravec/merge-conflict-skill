@@ -309,7 +309,33 @@ When the conflict is in comments and the code is identical on both sides, pick t
 When the conflict pairs `code A + comment X` with `code B + comment Y`, the code conflict decides via §5.1. The comment then must be the one that describes the chosen code, not the discarded one — otherwise the comment lies.
 
 ### 5.5 Output format
-*(pending)*
+
+§3.1 budgets ~10 lines for the output-format section in SKILL.md. The job is to close the over-generation failure mode (§2 finding #3) without breaking the pipeline contract.
+
+**The pipeline contract.**
+
+`scripts/pilot.py:193` extracts the first fenced code block via the regex `r"\`\`\`(?:\w+)?\n([\s\S]*?)\`\`\`"`. Two consequences:
+
+- A language tag is optional. v2 does not require one; the spec says "in a fenced code block" without prescribing the tag.
+- If the response contains no fenced block, extraction returns an empty string and `score()` returns `{"empty": True}` — the case is scored as a non-answer, regardless of how good the prose around it is. **The fence is non-negotiable.**
+
+**What v1 had.**
+
+v1 specified: a single fenced code block, no prose. Correct in spirit, insufficient in practice — both pilot models routinely wrapped the code block in explanation text, and one case ran 14× the ground-truth length.
+
+**What v2 adds.**
+
+Three reinforcements, each load-bearing against an observed pilot failure:
+
+1. **Explicit length cap.** The output must be at most the combined length of side `a` and side `b`. Outputs longer than that necessarily contain content not derivable from the conflict — by §3.4's pick-over-invent default, that content does not belong. The cap is a soft self-check; it is usually achievable with significant headroom and gives the model a concrete "is this output too long?" test.
+
+2. **No prose, before or after.** v1 said "no prose" once; v2 says it twice — once at the top of the format block and once as a final reminder, because the pilot showed a single instruction was not strong enough. The reminder explicitly anchors to the structural failure mode: explanation text inflates the edit-distance denominator and depresses scores even when the code resolution is correct.
+
+3. **No new identifiers unless §5.1 routes to *custom*.** This is the §3.4 / §5.2 invariant restated in output-format terms. The model should be able to point to the source of every identifier in its output: side `a`, side `b`, or surrounding context. This is the strongest constraint on fabrication.
+
+**What the format spec does *not* cover.**
+
+The output format does not encode uncertainty. There is no metadata channel for "I am not sure" — the output is just the resolved code. This is a real limit, acknowledged in §5.2's *custom* discussion: when the model is in the residual interchangeable-cases class (§3.4) or in the ~16% of custom cases needing external context (§7.2), it commits to a best-effort answer without flagging. v2 does not invent a side-channel for uncertainty; it accepts the ceiling.
 
 *(No §5.6 — rationale section deliberately omitted from SKILL.md, see §3.3.)*
 
