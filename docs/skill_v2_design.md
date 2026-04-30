@@ -148,7 +148,40 @@ Working outline. The framing shifted after reviewing the literature (see §7): v
 *(pending)*
 
 ### 5.2 Resolution strategy by pattern
-*(pending)*
+
+§5.1 routes the model to one of four patterns. This section specifies the strategy each pattern triggers. The strategies are deliberately asymmetric — *pick* gets the most attention because §3.4 makes it the default operation, and *custom* gets a hard limit because it is the failure-mode-prone branch.
+
+**Pick — primary criterion: surrounding-code consistency.**
+
+The choice between side `a` and side `b` is anchored on whether the file remains coherent after the chunk is replaced. Three signals, in priority order:
+
+1. **Symbol references.** If one side defines or imports a symbol that the code outside the chunk uses, picking the other side breaks the file. This decides most non-trivial pick cases.
+2. **Import / dependency consistency.** If one side adds an import that its own body needs, picking the other side strands the import or strands the use.
+3. **Local style.** If 1 and 2 do not discriminate, prefer the side that matches naming and indentation in the surrounding 5–10 lines.
+
+Degenerate cases decide themselves: one side empty → take the non-empty side; one side a strict superset of the other → take the superset.
+
+**Genuinely interchangeable cases.** When the two sides are valid alternative implementations that surrounding-code consistency cannot discriminate, commit to one side. Do *not* fabricate a third option, do *not* concatenate as a hedge. This is §3.4's honest ceiling — accept that ConGra strips the branch semantics that real developers use to break this tie.
+
+**Combine — only when both sides add *independent* content.**
+
+Trigger: the two sides do not modify the *same* construct; they add disjoint content (e.g., two unrelated imports, two separate parameter additions, two new methods on the same class). Operation: concatenate the two bodies in the language-appropriate order (alphabetical for imports, source order otherwise).
+
+Anti-pattern: combining sides that modify the *same* thing differently. That is *pick*, not *combine* — concatenating two alternative implementations of the same function produces broken code.
+
+Boll's distribution (§7.1): combine variants total ~5–7%; *ours+theirs* (1.34%) is the most common, followed by *theirs+base* (1.29%) and *ours+base+theirs* (1.22%). v2 does not surface the *base* variant in SKILL.md — the model does not see a separate base in ConGra's chunk view — but the design doc records that combine without base is the dominant form.
+
+**Empty — both sides delete the same construct.**
+
+Trigger: both sides remove (semantically) the same code. Operation: produce no content for the chunk. Verification: if either side adds non-trivial content, the pattern is *pick* or *combine*, not *empty*. This is the smallest budget allocation in SKILL.md — one or two lines.
+
+**Custom — smallest derivation from existing tokens.**
+
+Trigger: §5.1 has ruled out pick, combine, and empty. Operation: produce the smallest reconciliation of the two intents using only tokens already present in sides `a` and `b`. Do not invent new identifiers, new functions, or new abstractions.
+
+Honest limit: ~16% of custom cases (MergeBERT user study, §7.2) require information outside the conflict region — neighbouring files, commit history, task context. For those, the in-file strategy degrades to a best-effort *pick* of whichever side is more self-contained. v2 acknowledges this ceiling explicitly rather than encouraging fabrication.
+
+Anti-pattern: writing new functions, new abstractions, or explanatory commentary. Every pilot over-generation case (§2 finding #3) is the model treating a pick-eligible conflict as if it were custom.
 
 ### 5.3 Worked examples
 *(pending)*
