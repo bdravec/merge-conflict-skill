@@ -145,7 +145,31 @@ Working outline. The framing shifted after reviewing the literature (see §7): v
 *To be filled in as decisions are made.*
 
 ### 5.1 Identify the resolution pattern
-*(pending)*
+
+§5.2 specifies what to do once the pattern is known. This section specifies how the model identifies the pattern from the conflict region itself.
+
+**The decision rule (in order):**
+
+1. **Empty test.** Are both sides deletions or whitespace-only? If yes → **empty**. Otherwise continue.
+2. **Combine test.** Do the two sides add *independent*, non-overlapping content — different imports, different methods on the same class, different parameters in the same signature? If yes → **combine**. Otherwise continue.
+3. **Pick (default).** Apply §5.2's surrounding-code consistency criterion to choose side `a` or side `b`. → **pick**.
+4. **Custom escape.** Only if step 3 cannot produce a coherent file with *either* side AND step 2's test fails AND step 1's does not apply, → **custom**. Use sparingly: over-generation in the pilot (§2 finding #3) was almost always the model misclassifying a pick-eligible conflict as custom.
+
+**Why this ordering.**
+
+Empty and combine are tested first because they have positive, recognisable triggers in the conflict region — both-sides-deleted is a shape, independent-additions is a shape. Pick is the default because it covers ~80% of real cases (Boll, §7.1) *and* it is the operation least likely to introduce bugs: copying existing tokens cannot fabricate behavior. Custom is the escape rather than a positive branch because the pilot showed the model is biased toward it; making it the fallback rather than a peer-tested option lowers the activation energy for the cheaper patterns.
+
+The rule deliberately does not include a positional prior over `a`/`b`. ConGra strips the *ours/theirs* branch semantics that would justify one (§6). Once §5.1 routes to *pick*, §5.2 chooses which side based on file content, not label position.
+
+**ConGra type as secondary signal.**
+
+ConGra annotates each conflict as `text`, `sytx`, or `func`. v2 does not gate pattern identification on this label — it is metadata, not always available outside ConGra, and §5.1 must work without it. But when present, the type provides a weak prior that is useful for diagnosing failure modes by category:
+
+- **text** → almost always *pick*. Two wordings of the same line; rarely combinable.
+- **sytx** → *pick* or *combine*. Concatenation may or may not parse; the combine test resolves it.
+- **func** → *pick* by default. *Custom* only when neither side compiles or runs correctly with the rest of the file.
+
+The skill does not surface this mapping to the model — it would be misleading when the type is wrong, and redundant with the decision rule when it is right. The mapping is recorded here for chapter writing and for slicing the v2 evaluation by ConGra type.
 
 ### 5.2 Resolution strategy by pattern
 
