@@ -98,6 +98,19 @@ The first proposal was a short rationale paragraph at the bottom of SKILL.md plu
 
 **Decision: all rationale lives in `docs/skill_v2_design.md` (this file).** SKILL.md ends with the output-format section. The ~8 lines this frees up go back into the budget as headroom, not new content — smaller-and-tighter is fine.
 
+### 3.4 Why pick-a-side is the default heuristic
+
+Boll et al. (EASE 2024, see §7.1) report that ~80% of real-world conflict chunks are resolved by keeping one entire side (62.4% *ours* + 17.6% *theirs*). Concatenation patterns account for ~5–7%, full deletion for ~2%, and custom resolution for ~12%. The empirical centre of mass is overwhelmingly *pick*.
+
+This connects directly to §2 finding #3 (over-generation up to 14× ground-truth length). When the model wraps the resolution in explanatory prose or invents new code, it is, in effect, treating ~80% of cases as if they were custom resolutions. Pick-a-side as the explicit default is therefore not just a frequency-driven simplification — it is a corrective for the pilot's worst failure mode.
+
+Consequences for v2:
+- The pattern-identification rule (§5.1) opens with "default to pick" and only deviates on positive evidence (independent additions → combine; matching deletions → empty; truly novel intent → custom).
+- The output-format section (§5.5) reinforces "do not invent code unless §5.1 routes you to *custom*".
+- The worked examples (§5.3) lead with a *pick* example; *combine* and *custom* follow.
+
+The choice does not exploit Boll's *ours* > *theirs* ordering — see §6 working note on ConGra's neutral a/b labels.
+
 ---
 
 ## 4. Proposed v2 Structure
@@ -125,10 +138,10 @@ Working outline. The framing shifted after reviewing the literature (see §7): v
 
 *To be filled in as decisions are made.*
 
-### 5.1 Identify the conflict type
+### 5.1 Identify the resolution pattern
 *(pending)*
 
-### 5.2 Resolution strategy by type
+### 5.2 Resolution strategy by pattern
 *(pending)*
 
 ### 5.3 Worked examples
@@ -151,3 +164,47 @@ Notes on terminology and decisions that came up during design — kept so future
 ### What does "load-bearing" mean?
 
 A load-bearing wall actually holds the building up. Remove it and the structure collapses. Applied to skill design: a sentence is load-bearing if removing it would change the model's output in some identifiable class of cases. The v1 pilot showed that non-load-bearing text is not free — it competes for the model's attention and can degrade output. Every section in v2 has to pass the test "which cases does this fix?" before it earns its place.
+
+### Boll's *ours/theirs* vs. ConGra's *a/b*
+
+Boll et al. (§7.1) report *ours* (62.4%) > *theirs* (17.6%) — i.e. the incumbent branch wins more often than the merged-in one. This depends on a semantic distinction: *ours* = main, *theirs* = the merged-in dev branch. ConGra's tiny dataset uses neutral labels `a` and `b` and does not preserve that asymmetry. v2 can therefore teach "pick a side" with confidence, but cannot teach "prefer side a" or rely on positional bias. The skill stays neutral on *which* side to pick and anchors the choice on consistency with surrounding code instead.
+
+The *ours* > *theirs* ordering also holds for every language in Boll's study except C; Python and Java both follow it. This is corroborating evidence for the existence of a dominant side in real-world workflows, but is not actionable inside ConGra.
+
+---
+
+## 7. Literature Anchors
+
+Two papers ground v2's central design decisions. Both are referenced from §3.4 (default heuristic) and §4 (outline).
+
+### 7.1 Boll et al. — empirical resolution patterns
+
+Boll, A. et al. *Characteristics, Challenges, and Resolutions of Merge Conflicts: An Empirical Study.* EASE 2024 (Distinguished Paper). n=131,154 conflicts across 10,000 GitHub projects.
+
+Resolution patterns and frequencies:
+
+| Pattern | Frequency | What it is |
+|---------|----------:|------------|
+| ours | 62.4% | Keep entire branch-A version |
+| theirs | 17.6% | Keep entire branch-B version |
+| empty | 2.45% | Remove chunk entirely |
+| ours+theirs | 1.34% | Concatenate |
+| theirs+base | 1.29% | Concatenate |
+| ours+base+theirs | 1.22% | Concatenate |
+| base | 0.97% | Revert to base |
+| ours+base | 0.66% | Concatenate |
+| Other compound | <1% | Concatenate variants |
+| **Total derivable from existing tokens** | **87.9%** | |
+| Custom (non-derivable) | 12.1% | Requires new code |
+
+Headline implications used in v2:
+- ~80% of chunks are resolved by picking one entire side. → §3.4 default.
+- Concatenation patterns combined are ~5–7%. → "combine" branch in §5.1.
+- Custom resolution is rare (~12%). → §5.5 reinforces "do not invent code unless routed to *custom*".
+- The *ours* > *theirs* ordering is real but not exploitable in ConGra — see §6 working note.
+
+### 7.2 MergeBERT user study — the limit of in-context resolution
+
+MergeBERT (Svyatkovskiy et al.) reports a user-study finding that, of conflicts requiring custom resolution, ~16% need information that exists outside the conflict region — in other files, in commit history, or in the developer's task context. A SKILL.md operating on the file alone has a structural ceiling on this slice.
+
+Implication for v2: the *custom* branch (§5.1) acknowledges this ceiling explicitly rather than encouraging the model to fabricate. When the resolution truly requires external context, "best-effort, signal uncertainty" is the honest behavior. This also frames a v3 hypothesis: external `references/` material may close part of this gap, but cannot close all of it.
