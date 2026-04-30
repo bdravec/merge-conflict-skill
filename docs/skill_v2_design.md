@@ -280,7 +280,33 @@ def fetch(url):
 Both sides modify the same call. *Pick* loses information from the discarded side; naive *combine* would emit two return statements. The reconciliation uses only tokens already present in sides `a` and `b` (`timeout=10`, `headers=AUTH_HEADERS`) — no new identifiers introduced. This is the discipline §5.2's *custom* branch enforces.
 
 ### 5.4 Edge cases
-*(pending)*
+
+§5.1's decision rule covers the common shape of conflicts. This section records the corner cases that the rule does not handle correctly without explicit guidance — each one a class of mistakes the model could make if §5.1 were applied naively.
+
+**Both sides identical.**
+
+If side `a` and side `b` are byte-identical (or whitespace-equivalent after normalization), the resolution is either side. The edge case matters because the model can over-think it, looking for a hidden distinction and inventing one — a known fabrication mode in the pilot. v2 says explicitly: *if the sides are the same, emit either and stop.*
+
+**One side empty.**
+
+Easy to misclassify as the *empty* pattern. The *empty* pattern (§5.2) requires *both* sides to be deletions; one-side-empty is *pick* — take the non-empty side. §5.2's consistency criterion applies trivially: the empty side cannot be consistent with surrounding code that uses any of the chunk's content.
+
+**Imports.**
+
+Imports are a normal scope, so §5.1's combine vs. pick test applies as written. The only edge cases imports add are:
+
+- *Same symbol, different module* (e.g. `from a import X` vs `from b import X`) → *pick*, with surrounding-code consistency deciding which module's `X` is in scope elsewhere.
+- *Order in combined output* — preserve the language's import convention (alphabetical within a group for Python; existing relative order otherwise). This is the only place v2 surfaces a language-specific convention in SKILL.md.
+
+**Broken syntax / unbalanced delimiters.**
+
+The conflict region may span structural elements — an open bracket, the start of a function, the middle of a string. When the chunk is replaced, the result must parse. This is a strong form of §5.2's consistency criterion: *parseability is non-negotiable*. The model must verify that the chosen side, when substituted into the file, produces syntactically valid code; if neither side does on its own, §5.1 escapes to *custom* (rearrange existing tokens until it parses).
+
+**Comment-only changes.**
+
+When the conflict is in comments and the code is identical on both sides, pick the comment that better describes the surrounding code. Combining comments is almost always wrong — two comments stacked produce noise, not information.
+
+When the conflict pairs `code A + comment X` with `code B + comment Y`, the code conflict decides via §5.1. The comment then must be the one that describes the chosen code, not the discarded one — otherwise the comment lies.
 
 ### 5.5 Output format
 *(pending)*
