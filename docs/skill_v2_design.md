@@ -98,18 +98,24 @@ The first proposal was a short rationale paragraph at the bottom of SKILL.md plu
 
 **Decision: all rationale lives in `docs/skill_v2_design.md` (this file).** SKILL.md ends with the output-format section. The ~8 lines this frees up go back into the budget as headroom, not new content — smaller-and-tighter is fine.
 
-### 3.4 Why pick-a-side is the default heuristic
+### 3.4 Why "pick over invent" is the default operation
 
-Boll et al. (EASE 2024, see §7.1) report that ~80% of real-world conflict chunks are resolved by keeping one entire side (62.4% *ours* + 17.6% *theirs*). Concatenation patterns account for ~5–7%, full deletion for ~2%, and custom resolution for ~12%. The empirical centre of mass is overwhelmingly *pick*.
+Two distinct defaults are at stake — collapsing them is the trap §3.4 has to avoid.
 
-This connects directly to §2 finding #3 (over-generation up to 14× ground-truth length). When the model wraps the resolution in explanatory prose or invents new code, it is, in effect, treating ~80% of cases as if they were custom resolutions. Pick-a-side as the explicit default is therefore not just a frequency-driven simplification — it is a corrective for the pilot's worst failure mode.
+1. **Default *operation* (this section's claim):** when uncertain, copy one of the two existing sides verbatim rather than fabricate new code.
+2. **Default *side* (deferred to §5.2):** *which* of the two sides to pick — a criterion question, not a frequency question.
+
+Boll et al. (EASE 2024, see §7.1) report that ~80% of real-world conflict chunks are resolved by keeping one entire side (62.4% *ours* + 17.6% *theirs*); concatenation patterns account for ~5–7%, full deletion for ~2%, and custom resolution for ~12%. ~88% of resolutions are derivable from existing tokens. The empirical centre of mass is overwhelmingly *pick over invent*. Boll's distribution does **not** justify a default *side* — that ordering depends on branch semantics (ours = main, theirs = dev) which ConGra strips (see §6 working note on a/b labels).
+
+The pick-over-invent default connects directly to §2 finding #3 (over-generation up to 14× ground-truth length). When the model wraps the resolution in explanatory prose or invents new code, it is, in effect, treating ~80% of cases as if they were custom resolutions. Pick-over-invent as the explicit default is therefore not just a frequency-driven simplification — it is a corrective for the pilot's worst failure mode.
+
+The which-side question routes to §5.2 with surrounding-code consistency as the primary criterion: imports, symbol references, and local style should remain coherent after the chunk is replaced. Degenerate cases (one side empty, one side a strict superset) decide themselves. Beyond that, a residual class of cases is genuinely interchangeable — two valid alternative implementations where consistency does not discriminate. In real-world work, branch authority breaks the tie; in ConGra's neutral-label setting it cannot. v2 accepts this as an honest ceiling rather than papering over it with an arbitrary tiebreaker (which would either bias toward whichever side ConGra happened to label `a`, or simply be wrong half the time).
 
 Consequences for v2:
-- The pattern-identification rule (§5.1) opens with "default to pick" and only deviates on positive evidence (independent additions → combine; matching deletions → empty; truly novel intent → custom).
+- The pattern-identification rule (§5.1) opens with "default to pick (one side, verbatim)" and only deviates on positive evidence (independent additions → combine; matching deletions → empty; truly novel intent → custom).
+- The which-side criterion lives in §5.2: surrounding-code consistency first; if undecided, commit to one side without inventing.
 - The output-format section (§5.5) reinforces "do not invent code unless §5.1 routes you to *custom*".
 - The worked examples (§5.3) lead with a *pick* example; *combine* and *custom* follow.
-
-The choice does not exploit Boll's *ours* > *theirs* ordering — see §6 working note on ConGra's neutral a/b labels.
 
 ---
 
