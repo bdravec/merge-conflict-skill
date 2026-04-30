@@ -208,7 +208,76 @@ Honest limit: ~16% of custom cases (MergeBERT user study, §7.2) require informa
 Anti-pattern: writing new functions, new abstractions, or explanatory commentary. Every pilot over-generation case (§2 finding #3) is the model treating a pick-eligible conflict as if it were custom.
 
 ### 5.3 Worked examples
-*(pending)*
+
+§3.1 budgets ~40 lines in SKILL.md for examples; §3.2 fixes them as synthetic (Option A). This section records which patterns get examples, what each must teach, and the synthetic Python snippets that v2 will use.
+
+**Three examples — pick, combine, custom. No empty example.**
+
+Empty is operationally trivial (both sides deleted → produce nothing) and adding an example would not change model behavior on any case. The load-bearing test excludes it.
+
+**What each example must teach:**
+
+- **Pick** — the surrounding-code-consistency criterion. The model already defaults to *pick* (§3.4); the pilot showed the gap is *which side*. The example must demonstrate that symbol references in the surrounding code decide.
+- **Combine** — that "independent" means *non-overlapping additions*, not just "different content". The most common combine misuse is concatenating two alternative implementations of the same construct.
+- **Custom** — that custom uses *existing tokens* rearranged, not new identifiers. The pilot's 14× over-generation cases were the model fabricating; the example must demonstrate the disciplined alternative.
+
+**Language choice: Python.**
+
+The pilot ran on `python/func`; the v2 evaluation will repeat on Python first. SKILL.md is language-agnostic in principle, but worked examples have to commit, and committing to the evaluation language keeps the snippets aligned with the dataset.
+
+#### Example 1 — Pick (symbol references decide)
+
+```python
+<<<<<<< a
+from collections import OrderedDict
+=======
+from collections import defaultdict
+>>>>>>> b
+
+class Counter:
+    def __init__(self):
+        self.counts = defaultdict(int)
+```
+
+Resolution: side `b`. The class body uses `defaultdict`, so picking side `a` would strand the import and break the file. The criterion is symbol consistency, not authorship or position.
+
+#### Example 2 — Combine (independent additions only)
+
+```python
+class Cache:
+    def get(self, key):
+        return self.store.get(key)
+<<<<<<< a
+    def set(self, key, value):
+        self.store[key] = value
+=======
+    def delete(self, key):
+        self.store.pop(key, None)
+>>>>>>> b
+```
+
+Resolution: combine — keep both methods. They add disjoint functionality; neither subsumes the other; concatenation produces coherent code. *Anti-pattern reminder:* if the two sides were two different implementations of the same method (e.g. both `set`), the pattern would be *pick*, not *combine*.
+
+#### Example 3 — Custom (rearrange existing tokens)
+
+```python
+<<<<<<< a
+def fetch(url):
+    return requests.get(url, timeout=10).json()
+=======
+def fetch(url):
+    return requests.get(url, headers=AUTH_HEADERS).json()
+>>>>>>> b
+```
+
+Resolution:
+
+```python
+def fetch(url):
+    return requests.get(url, timeout=10, headers=AUTH_HEADERS).json()
+```
+
+Both sides modify the same call. *Pick* loses information from the discarded side; naive *combine* would emit two return statements. The reconciliation uses only tokens already present in sides `a` and `b` (`timeout=10`, `headers=AUTH_HEADERS`) — no new identifiers introduced. This is the discipline §5.2's *custom* branch enforces.
 
 ### 5.4 Edge cases
 *(pending)*
