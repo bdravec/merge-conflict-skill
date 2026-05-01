@@ -374,6 +374,19 @@ Boll et al. (§7.1) report *ours* (62.4%) > *theirs* (17.6%) — i.e. the incumb
 
 The *ours* > *theirs* ordering also holds for every language in Boll's study except C; Python and Java both follow it. This is corroborating evidence for the existence of a dominant side in real-world workflows, but is not actionable inside ConGra.
 
+### Empty-pattern scoring gap in `pilot.py` (issue #39)
+
+v2 introduces an explicit *Empty* pattern (§5.2): produce no content for the chunk when both sides are deletions. This surfaces an evaluation-pipeline gap that v1 did not.
+
+`scripts/pilot.py:219` short-circuits any empty resolution to `{empty: True}` to bypass the winnowing-metric bug (`metric_winnowing("", x)` returns 1.0 — see project memory). The short-circuit is correct as a bug bypass but conflates two distinct cases:
+
+1. Model gave up and emitted nothing → `empty: True` (correct: non-answer).
+2. Model correctly applied the Empty pattern when GT is also empty → currently `empty: True` (incorrect: should be a pass).
+
+Tracked in [issue #39](https://github.com/bdravec/merge-conflict-skill/issues/39). The fix is in the pipeline (`score()`), not in SKILL.md — Section 3's Empty subsection already restricts empty output to "use only when both sides remove the same code", which is the correct skill-level guardrail.
+
+Practical impact for the immediate v2 pilot is small: `python/func` conflicts are functional changes, almost never both-sides-deletions, so Empty cases are rare. The gap matters when v2 evaluation expands to other slices.
+
 ---
 
 ## 7. Literature Anchors
