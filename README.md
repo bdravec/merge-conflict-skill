@@ -122,35 +122,82 @@ Note: the empty string case passes via winnowing — this is a known bug in the 
 
 ### Full pipeline (with LLM via vLLM)
 
-First, serve a model using vLLM (only one model fits in VRAM at a time):
+You will need two terminals: one long-running for vLLM, one for the pilot script.
+
+**Terminal 1 — vLLM server (long-running):**
 
 ```bash
 export HF_HUB_OFFLINE=1
 source /home/baebs/thesis/vllm-env/bin/activate
 
-# Qwen3-8B
+# Start one model at a time (only one fits in VRAM):
 vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 32768
-
-# Apertus-8B
+# OR:
 vllm serve swiss-ai/Apertus-8B-Instruct-2509 --port 8000 --max-model-len 32768
 ```
 
-Wait for `Application startup complete` in the terminal, then verify it's responding:
+Wait for `Application startup complete`.
+
+**Terminal 2 — verify and run pilot:**
 
 ```bash
-curl -s http://localhost:8000/v1/models | python3 -m json.tool
-```
-
-To switch models, stop the running server first: `pkill -f "vllm serve"`
-
-> **Note:** ConGra's `main.py` does not support Qwen3 or Apertus (hardcoded model routing in `utils.py`). Use the standalone pilot script instead:
-
-```bash
+cd /home/baebs/thesis/merge-conflict-skill
 source /home/baebs/thesis/vllm-env/bin/activate
-python scripts/pilot.py
+
+# Verify vLLM is responding:
+curl -s http://localhost:8000/v1/models | python3 -m json.tool
+
+# Run the pilot — match --model to whichever vLLM is serving:
+python scripts/pilot.py --model qwen3 --skill-version v2
+# OR:
+python scripts/pilot.py --model apertus --skill-version v2
 ```
 
-Results are saved to `scripts/results/pilot_results.jsonl`. See `docs/vllm_setup.md` for full setup details.
+Results are saved to `scripts/results/pilot_results_<model>_skill-<version>.jsonl`.
+
+The `--skill-version` flag (`v1` or `v2`) selects which `skills/merge-conflict-resolve-<version>/SKILL.md` is loaded.
+
+> **Note:** ConGra's `main.py` does not support Qwen3 or Apertus (hardcoded model routing in `utils.py`). Use the standalone `pilot.py` script. See `docs/vllm_setup.md` for full vLLM setup details.
+
+---
+
+### Switching between models
+
+Only one model fits in VRAM, so testing both Qwen3-8B and Apertus-8B is sequential. The model running in Terminal 1 holds the foreground, so you cannot type shell commands into Terminal 1 until vLLM exits.
+
+**Option A — Ctrl-C in Terminal 1, then restart there:**
+
+1. Press **Ctrl-C** in Terminal 1 to interrupt vLLM. Wait 5–10 s for it to shut down.
+2. Once you are back at the shell prompt in Terminal 1:
+
+   ```bash
+   pkill -f "vllm serve" 2>/dev/null  # cleanup any stragglers
+   sleep 5
+   vllm serve <other-model> --port 8000 --max-model-len 32768
+   ```
+
+3. Wait for `Application startup complete`, verify in Terminal 2 with the `curl` command above, then run the pilot with the matching `--model` flag.
+
+**Option B — pkill from Terminal 2:**
+
+1. In Terminal 2:
+
+   ```bash
+   pkill -f "vllm serve"
+   ```
+
+   This kills the vLLM process running in Terminal 1.
+
+2. Terminal 1 returns to its shell prompt.
+3. In Terminal 1, start the new vLLM as above.
+
+Either works. Option A is cleaner; Option B is faster if you forget to Ctrl-C first.
+
+**Typical sequence to evaluate both models:**
+
+1. Start vLLM with model A in Terminal 1 → run `pilot.py --model A` in Terminal 2.
+2. Switch vLLM to model B (Option A or B above) → run `pilot.py --model B` in Terminal 2.
+3. Run `analyze_pilot.py --model A` and `--model B` to summarise.
 
 ---
 
