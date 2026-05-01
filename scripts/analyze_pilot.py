@@ -14,21 +14,20 @@ from statistics import mean, median
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 
-RESULT_FILES = {
-    "qwen3":   "pilot_results_qwen3_v2.jsonl",
-    "apertus": "pilot_results_apertus_v2.jsonl",
-}
-
+MODELS = ["qwen3", "apertus"]
 BASELINE = "no-skill"
-SKILL_CONDITIONS = ["skill-v1-sys", "skill-v1-user"]
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, choices=list(RESULT_FILES.keys()))
+    parser.add_argument("--model", required=True, choices=MODELS)
+    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2"],
+                        help="Which skill version's results to analyze (default: v2)")
     args = parser.parse_args()
 
-    results_file = os.path.join(RESULTS_DIR, RESULT_FILES[args.model])
+    skill_v = args.skill_version
+    SKILL_CONDITIONS = [f"skill-{skill_v}-sys", f"skill-{skill_v}-user"]
+    results_file = os.path.join(RESULTS_DIR, f"pilot_results_{args.model}_skill-{skill_v}.jsonl")
     records = []
     with open(results_file) as f:
         for line in f:

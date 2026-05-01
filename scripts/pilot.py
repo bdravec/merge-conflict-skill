@@ -27,13 +27,11 @@ from openai import OpenAI
 MODELS = {
     "qwen3": {
         "model_id":    "Qwen/Qwen3-8B",
-        "results_file": "pilot_results_qwen3_v2.jsonl",
         # Disable chain-of-thought thinking mode for cleaner output
         "extra_body":  {"chat_template_kwargs": {"enable_thinking": False}},
     },
     "apertus": {
         "model_id":    "swiss-ai/Apertus-8B-Instruct-2509",
-        "results_file": "pilot_results_apertus_v2.jsonl",
         "extra_body":  {},
     },
 }
@@ -133,7 +131,8 @@ CONTEXT_LINES = 5     # lines of context around the conflict (ConGra default)
 N_CASES       = 20    # how many cases to sample from meta_list.txt
 LANGUAGE      = "python"
 
-SKILL_PATH = os.path.join(REPO_ROOT, "skills", "merge-conflict-resolve-v1", "SKILL.md")
+def skill_path_for(version: str) -> str:
+    return os.path.join(REPO_ROOT, "skills", f"merge-conflict-resolve-{version}", "SKILL.md")
 
 # ── ConGra default system prompt (from ConGra/src/prompt.py) ─────────────────
 CONGRA_SYSTEM_PROMPT = (
@@ -255,14 +254,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, choices=list(MODELS.keys()),
                         help="Model to evaluate")
+    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2"],
+                        help="Which SKILL.md version to use (default: v2)")
     parser.add_argument("--data-root", default=None,
                         help="Override path to congra_tiny_datasets/<lang>/<type>")
     args = parser.parse_args()
 
-    cfg = MODELS[args.model]
+    skill_v     = args.skill_version
+    cfg         = MODELS[args.model]
     model_id    = cfg["model_id"]
     extra_body  = cfg["extra_body"]
-    results_file = os.path.join(RESULTS_DIR, cfg["results_file"])
+    skill_path  = skill_path_for(skill_v)
+    results_file = os.path.join(RESULTS_DIR, f"pilot_results_{args.model}_skill-{skill_v}.jsonl")
 
     data_root = args.data_root or os.path.join(
         CONGRA_ROOT, "data", "congra_tiny_datasets", "python", "func"
@@ -272,8 +275,8 @@ def main():
     print(f"Results:     {results_file}")
     print(f"Data:        {data_root}")
 
-    print(f"\nLoading SKILL.md from {SKILL_PATH}")
-    skill_system_prompt = load_skill_md(SKILL_PATH)
+    print(f"\nLoading SKILL.md from {skill_path}")
+    skill_system_prompt = load_skill_md(skill_path)
 
     print(f"Loading {N_CASES} cases from {data_root}")
     cases = load_meta(data_root, N_CASES)
@@ -287,9 +290,9 @@ def main():
     # Each condition: (name, system_prompt, user_prefix)
     # user_prefix is prepended to the user prompt when non-empty (skill-in-user injection)
     conditions = [
-        ("no-skill",       CONGRA_SYSTEM_PROMPT, ""),
-        ("skill-v1-sys",   skill_system_prompt,  ""),
-        ("skill-v1-user",  CONGRA_SYSTEM_PROMPT, skill_system_prompt),
+        ("no-skill",                    CONGRA_SYSTEM_PROMPT, ""),
+        (f"skill-{skill_v}-sys",        skill_system_prompt,  ""),
+        (f"skill-{skill_v}-user",       CONGRA_SYSTEM_PROMPT, skill_system_prompt),
     ]
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
