@@ -238,8 +238,91 @@ This refines v2.1 recommendation 5 from sub-q 2 (which already said "reframe the
 
 ---
 
+## Sub-question 3 — headroom hypothesis
+
+The hypothesis: Qwen3-8B's no-skill baseline (0.40 edit mean) is ~33% higher than Apertus-8B's (0.30). If Qwen3 is already producing the resolutions v2 tries to teach, v2 has little headroom and the cases where v2 helps should concentrate at the bottom of the score distribution, not the top.
+
+### Bucket effect
+
+Splitting the 20 cases by no-skill baseline:
+
+| Baseline tier | n | no-skill µ | v2-sys µ | Δ µ | byte-identical to no-skill |
+|---|--:|--:|--:|--:|--:|
+| High (≥0.50) | 6 | 0.6734 | 0.6117 | **−0.0617** | 4/6 |
+| Mid (0.30–0.50) | 7 | 0.3920 | 0.3861 | −0.0060 | 0/7 |
+| Low (<0.30) | 7 | 0.1603 | 0.1855 | **+0.0252** | 5/7 |
+
+v2 *hurts* high-baseline cases, is neutral in the middle, and *helps* low-baseline cases. The pattern is monotonic in the baseline-score axis.
+
+### Where v2 actually changes the output
+
+In the high bucket, 4/6 v2-sys outputs are byte-identical to no-skill — v2 has zero influence. The two divergent cases (`0x520debc691c88dc5` and `0xa4d50e39def807dd`) both regressed (covered as case B and as shape 2 elsewhere in this doc). In the low bucket, 5/7 are byte-identical too. The two divergent cases (`0x999797db0c12ab9d`: Δ +0.136, `0xc00c4d82b7364e6d`: Δ +0.040) both gained — and both gains came from v2 trimming runaway over-generation that no-skill produced (length-shifts of −410 and −472 chars respectively, see sub-q 4).
+
+So v2's net effect on Qwen3 is a sum of (a) doing nothing in 9/20 cases, (b) trimming a few real over-generations in low-baseline cases, and (c) corrupting a few high-baseline cases by trimming or mis-routing.
+
+### Are the top no-skill scorers actually applying v2 patterns?
+
+For the headroom hypothesis to hold, the top no-skill scorers should already implement textbook *pick* / *combine* / *empty* / *custom*. Sampled inspection of the top six:
+
+| Case | no-skill | what no-skill produces | v2 pattern | correctly applied? |
+|---|--:|---|---|---|
+| `0xe63ff0dd` | 0.84 | pick-a (with some identifier-leak from b) | pick | ✅ partially (mixes b's `tf_model`, `get_shape`) |
+| `0xe4ff79aa` | 0.79 | pick-b (`poolsize`) | pick | ❌ ground truth wants a (`pool_size`); high score is metric forgiveness — sides differ only by underscores |
+| `0x8e6579cb` | 0.67 | pick-a (4-space indentation) | pick | ✅ |
+| `0x520debc6` | 0.65 | pick-a (verbose tuple-or-string handling) | pick | ✅ |
+| `0xa4d50e39` | 0.60 | combine (b's `tf_dtype` + a's `init_scope`) | combine | ✅ (optimal non-custom answer) |
+| `0x6cdd08d5` | 0.50 | pick-b (`o._keras_shape`) | pick | ❌ ground truth wants a (`o.get_shape().as_list()`); again metric forgiveness |
+
+**4/6 are real pattern applications.** Qwen3's no-skill behaviour on these cases is what v2 would prescribe. **2/6 score high despite picking the wrong side**, because the ConGra edit-similarity metric is forgiving when sides have heavy token overlap (`pool_size`/`poolsize`, `get_shape`/`_keras_shape`). v2 doesn't fix these — it produces the same wrong-side output as no-skill — but neither does it hurt them.
+
+### Verdict on the headroom hypothesis
+
+**Supported.** Three pieces of evidence converge:
+
+1. **Distributional.** v2's impact is monotonic in baseline score: hurts the top (−0.06), neutral in the middle, helps the bottom (+0.025). This is the signature of a skill that operates by trimming/shortening — it has the most room to act when the model is over-generating, and acts as a (sometimes harmful) constraint when the model is already producing close-to-optimal output.
+
+2. **Mechanistic.** Inspection of top no-skill scorers shows Qwen3 is already applying *pick* and *combine* in the way v2 prescribes (4/6 cases), and v2-sys is byte-identical to no-skill on 4/6 of those high cases — the skill content has no purchase. Where v2 *does* divert from no-skill at the high end, it diverts in the wrong direction (case B: `0xa4d50e39`).
+
+3. **Symmetric on the low end.** Low-baseline cases that v2 changed all changed for the better, because the failure mode there was over-generation — a problem v2's framing (length cap, "no prose") attacks directly. v2 doesn't teach the model new resolution patterns; it teaches the model to produce less commentary.
+
+### Implications for the thesis framing
+
+This reframes what "SKILL.md improves merge conflict resolution" means at 8B scale on Qwen3:
+
+- **v2 is doing harm-reduction, not skill-elevation.** It mostly stops the model from over-generating, which improves scores in low-baseline cases. It does not give the model new resolution-pattern competence; the patterns Qwen3 was going to apply with no skill are the ones it applies with v2.
+- **The high-baseline ceiling is real.** The cases where Qwen3 plateaus at 0.5–0.85 mostly already implement the right v2 pattern. Pushing scores higher in those cases requires the model to invent custom resolutions (case B's `n, m = size` unpack), which neither v1 nor v2 elicits and which is bounded by 8B-scale capability.
+- **v2's positive Apertus-8B result becomes more coherent.** Apertus has lower no-skill baseline (0.30 vs Qwen3's 0.40), so more of its cases fall into the bucket where v2's harm-reduction mechanism has room to help. Headroom is asymmetric across models — RQ3 ("does small model + skill close the gap to large model without skill") may need re-framing as "does skill close the over-generation gap, leaving the resolution-quality gap intact."
+
+### v2.1 implications (sub-q 3 additions)
+
+The four prior recommendations stand. The headroom finding adds one more:
+
+6. **Make v2's harm-reduction explicit, not implicit.** v2 currently tries to be both an over-generation guard and a pattern teacher. The data says it succeeds at the first and largely fails at the second. v2.1 could more directly state the over-generation guard rules (per sub-q 4 recommendation 5: no comments in code block, no echoing surrounding context) and de-emphasise the pattern hierarchy, since the model already executes the patterns when its output stays focused. Alternative framing: lead the skill with "Common failure mode: explanation-wrapping. Don't." rather than with the four-pattern taxonomy.
+
+---
+
+## Final synthesis
+
+Across all four sub-questions:
+
+- **Sub-q 1.** The two cases the issue framed as "v1 wins lost by v2" were actually v1's biggest losers; v2 recovered one (`0xe63ff0dd`) by going inert and worsened the other (`0xa4d50e39`) by trimming a correct combine line.
+- **Sub-q 2.** The five v2-sys losses cluster into three shapes: empty-side mis-pick (rule ordering bug), verbose-vs-concise mis-pick (length bias bleeding into pick decisions), and length-cap structural trim. All point to v2's minimisation pressure being too strong.
+- **Sub-q 3.** v2's impact is monotonic in baseline score: harmful at the top, neutral in the middle, helpful at the bottom. The headroom hypothesis is supported. v2 is doing harm-reduction (trimming over-generation), not skill-elevation.
+- **Sub-q 4.** v2 does shorten outputs (median −15%); the `|a|+|b|` cap is not enforced (worst violator 21× over). Shortening is net neutral on average — helps when no-skill was over-generating, hurts when no-skill was close to optimal.
+
+**Six v2.1 recommendations**, in priority order:
+
+1. (sub-q 4) Replace the numeric `|a|+|b|` cap with concrete content rules: no comments in the code block, no echoing of surrounding context. The cap as a number is not enforced; the cap as a content rule can be.
+2. (sub-q 2) Hoist the "one side empty → take non-empty side" rule into the pattern hierarchy at step 1, not the edge-case section.
+3. (sub-q 1) Add a worked pick-with-identifier-divergence example (Keras vs TF API) to the edge cases.
+4. (sub-q 2) Add a worked verbose-vs-concise pick example showing that completeness can be the right tiebreaker.
+5. (sub-q 1) Loosen the structural pressure of "smallest reconciliation" wording in the *custom* rule — flag that custom resolutions sometimes require new tokens.
+6. (sub-q 3) Reframe the skill as primarily an over-generation guard. Lead with "don't wrap the resolution in commentary"; the pattern taxonomy is secondary because the model already executes most patterns correctly when its output stays focused.
+
+---
+
 ## Open sub-questions
 
 - [x] Sub-question 2 — three shapes identified.
-- [ ] Sub-question 3: headroom hypothesis on no-skill wins.
-- [x] Sub-question 4 — v2 shortens (median −15%); cap not enforced; shortening is net neutral (helps over-generators, hurts close-to-optimal cases). v2.1 recommendation 5 refined: replace numeric cap with concrete over-generation guards.
+- [x] Sub-question 3 — headroom hypothesis supported. v2 does harm-reduction, not skill-elevation.
+- [x] Sub-question 4 — v2 shortens; cap not enforced; net neutral on shortening cases.
