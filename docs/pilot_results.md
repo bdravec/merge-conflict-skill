@@ -16,13 +16,17 @@ For full per-case breakdowns see the individual docs:
 
 ## Conditions
 
-| Condition | Description |
-|-----------|-------------|
-| `no-skill` | ConGra default system prompt, no skill content |
-| `skill-v1-sys` | SKILL.md v1 replaces the system message |
-| `skill-v1-user` | SKILL.md v1 prepended to the user message; default system prompt kept |
-| `skill-v2-sys` | SKILL.md v2 replaces the system message |
-| `skill-v2-user` | SKILL.md v2 prepended to the user message; default system prompt kept |
+Every call sends two chat messages: a `system` message and a `user` message. The `user` message is **always** the ConGra chain-of-thought template (conflict text, surrounding context, language hint) and is identical across all three conditions. The conditions differ only in the `system` message and in whether skill content is prepended to the `user` message.
+
+| Condition | `system` message | `user` message |
+|-----------|------------------|----------------|
+| `no-skill` | ConGra default (*"You are an expert in code merge conflicts…"*) | ConGra chain-of-thought template |
+| `skill-vX-sys` | **SKILL.md vX content** (replaces the ConGra default; ConGra system content is dropped) | ConGra chain-of-thought template |
+| `skill-vX-user` | ConGra default (kept) | **SKILL.md vX content** + `\n\n` + ConGra chain-of-thought template (skill is *prepended*, not appended) |
+
+In short: the ConGra user-prompt content (conflict + context + chain-of-thought) is never replaced. `-sys` swaps the system role; `-user` keeps both ConGra prompts and prepends the skill in front of the user message.
+
+Wiring is in `scripts/pilot.py:200-211` (`call_vllm`) and `scripts/pilot.py:292-296` (condition table).
 
 ---
 
