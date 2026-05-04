@@ -92,10 +92,83 @@ Two things follow for Chapter 6 / 7:
 
 ---
 
+## Sub-question 4 — outlier-driven concern
+
+The Apertus v2-sys result is a **+0.034** mean edit gain over no-skill (n=20). Sub-q 4 asks whether that mean is broadly distributed or driven by a small number of outlier cases.
+
+### Median test
+
+| Condition | mean | median | mean Δ | median Δ |
+|---|--:|--:|--:|--:|
+| no-skill | 0.2972 | 0.2897 | — | — |
+| skill-v1-sys | 0.3002 | 0.2884 | +0.003 | +0.000 |
+| skill-v1-user | 0.3028 | 0.3042 | +0.006 | +0.000 |
+| **skill-v2-sys** | **0.3310** | 0.3076 | **+0.034** | **+0.000** |
+| skill-v2-user | 0.3244 | 0.2914 | +0.027 | +0.000 |
+
+**The median Δedit is zero in every skill condition.** The reason is structural: 8/20 v2-sys outputs are byte-identical to no-skill, so 8 zeros sit at the centre of the distribution. The median Δedit being zero is not a sign of noise; it's a sign that the modal v2 effect is *no effect*.
+
+### Trimmed-mean test
+
+| Drop top N positive outliers | mean Δedit | n |
+|---|--:|--:|
+| 0 | **+0.0338** | 20 |
+| 1 | +0.0212 | 19 |
+| 2 | +0.0098 | 18 |
+| 3 | **+0.0004** | 17 |
+| 4 | −0.0080 | 16 |
+| 5 | −0.0090 | 15 |
+
+The entire Apertus v2 uplift is concentrated in **three cases**: `0xe63ff0dd` (+0.272), `0xa4d50e39` (+0.226), `0xe4ff79aa` (+0.169). Drop those and the mean Δedit collapses to essentially zero. Drop four (adding `0x96d20e6c` +0.134) and the mean turns negative.
+
+These three cases are the same v2-over-v1 winners characterised in sub-q 1 (modulo `0x223b2959`, which is a v1-loss recovery rather than a no-skill gain — it sits at v2-sys Δ ≈ 0 vs no-skill).
+
+### Sign distribution
+
+| Direction | count |
+|---|--:|
+| v2-sys > no-skill | 7 / 20 |
+| v2-sys < no-skill | 5 / 20 |
+| v2-sys = no-skill | 8 / 20 |
+
+At n=20 with 7 positives and 5 negatives, the binomial sign test against the null (skill has no effect) gives p ≈ 0.39 — not significant. A Wilcoxon signed-rank test would also fail to reject the null because the rank sums are dominated by ties and the few non-zero deltas are mostly small. **The +0.034 mean is statistically a function of the heavy right tail, not a broad effect across cases.**
+
+### Conditional analysis — when v2 does change the output
+
+Excluding the 8 byte-identical cases, the remaining 12 v2-sys outputs differ from no-skill:
+
+|  | n | mean Δedit |
+|---|--:|--:|
+| v2-sys positive (changed and helped) | 7 | **+0.122** |
+| v2-sys negative (changed and hurt) | 5 | −0.028 |
+
+Among cases where v2 acts at all, the positive moves are ≈4× larger than the negative moves. So v2 *when it acts* is a clear net win on Apertus — but it only acts on a minority (12/20 = 60% of cases overall, and only 4 of those 12 contribute non-trivial positive deltas).
+
+### Reading
+
+The Apertus v2 effect is real but narrow:
+
+- **Real:** when v2 acts, positive effects strongly outweigh negative effects in magnitude.
+- **Narrow:** v2 acts on the minority of cases where Apertus over-generates (the harm-reduction profile from sub-q 1). On the majority, v2 either changes nothing (8 ties) or makes a small adjustment that nets near zero (5 small negatives).
+
+This refines #40's headroom finding. The headroom hypothesis predicted that v2's effect concentrates at the bottom of the score distribution. Sub-q 4 sharpens this: v2's effect concentrates at *specific* cases — the ones with severe over-generation in the no-skill output — not at any case in the low-baseline tier. Bucketing by no-skill score on Apertus is a coarser view than the actual mechanism.
+
+### Implications for the thesis
+
+Two practical consequences:
+
+1. **Statistical reporting.** The mean is the right summary for the headline ("v2 improves Apertus edit mean by +0.034"), but it should be paired with the median and the trimmed mean, plus the sign distribution. Reporting the mean alone hides that v2 leaves 13/20 cases essentially unchanged. A footnote to that effect prevents over-claiming.
+
+2. **Generalisation claim for Chapter 7.** "v2 helps Apertus on the cases where Apertus over-generates" is a much more defensible claim than "v2 helps Apertus." The latter implies a broad-spectrum skill effect that the data doesn't support — even on the model where v2 does best. Cross-model generalisation should be framed as "the v2 mechanism (over-generation suppression) is model-agnostic; the population of cases where it can act is model-specific."
+
+This sharpens v2.1 recommendation 6 from #40 (reframe as over-generation guard) further: an over-generation guard is exactly what v2 *is*, on both models. The skill should be designed and evaluated as one.
+
+---
+
 ## Open sub-questions
 
 - [x] Sub-question 1 — v2-over-v1 mechanism on Apertus is over-generation suppression. Same mechanism as Qwen3; different opportunity.
-- [ ] Sub-question 2 — why did v1 winners (`0xa4d50e39`, `0xe63ff0dd`) survive on Apertus but flip on Qwen3? (Preview: likely the same mechanism — Apertus's over-generation makes v1's stricter framing actually beneficial, where Qwen3 didn't need it.)
+- [ ] Sub-question 2 — why did v1 winners (`0xa4d50e39`, `0xe63ff0dd`) survive on Apertus but flip on Qwen3?
 - [ ] Sub-question 3 — persistent Apertus loss `0xd9272c5e0e8f15ee` (−0.11 in both v1 and v2).
-- [ ] Sub-question 4 — outlier-driven concern: median delta vs mean.
+- [x] Sub-question 4 — outlier-driven. Median Δ = 0; mean +0.034 collapses to +0.0004 after dropping top 3. Effect is real but concentrated in ≤4 cases out of 20. Sign test (7+/5−/8=) is not significant at n=20.
 - [ ] Sub-question 5 — pattern-routing diagnostic: did v2 actually apply the *correct* pattern on each Apertus winning case?
