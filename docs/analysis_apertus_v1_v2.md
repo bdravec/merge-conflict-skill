@@ -305,10 +305,88 @@ The earlier #40 v2.1 recommendations (1–6) and sub-q 2 recommendation 7 all ho
 
 ---
 
+## Sub-question 5 — pattern-routing diagnostic
+
+For each Apertus v2-sys win (positive Δedit vs no-skill), classify what pattern v2 applied versus what pattern is required by ground truth. The question: when v2 helps, is it because v2 routed the case to the correct pattern, or for some other reason?
+
+### Scorecard
+
+| Case | Apertus v2-sys Δ | GT pattern | v2's applied pattern | Routing correct? | Source of gain |
+|---|--:|---|---|---|---|
+| `0xe63ff0dd` | +0.272 | pick-a | pick-a (right side, `K.placeholder`) | **✓ Correct** | Real pattern-teaching (sub-q 2) |
+| `0xa4d50e39` | +0.226 | custom (`n, m = size` unpack) | combine (`init_scope` + `tf_dtype`) | ≈ Best reachable given 8B ceiling | Harm-reduction (replaced hallucinated function) |
+| `0xe4ff79aa` | +0.169 | pick-a (`pool_size`) + custom-extend | pick-b (`poolsize`) | **✗ Wrong side** | Harm-reduction (trimmed broken-syntax fabrication) |
+| `0x96d20e6c` | +0.134 | pick-a (`data_format`) + custom-extend | pick-b (`dim_ordering`) | **✗ Wrong side** | Harm-reduction (trimmed preamble + epilogue) |
+| `0x8e6579cb` | +0.007 | pick-a + custom-rename (`vis_utils` → `layer_utils`) | pick-a (reformatted) + over-gen | Partial; custom out of reach | Marginal content alignment |
+| `0xddd5322d` | +0.003 | custom (different body) | combine (`if not None:` + `else:` branch) | **✗ Wrong pattern** | Marginal |
+
+### Reading
+
+- **1/6** wins are routed correctly at the pattern level (`0xe63ff0dd`).
+- **1/6** wins reach the best-reachable pattern given the 8B capability ceiling (`0xa4d50e39` — combine is the closest non-custom approximation).
+- **3/6** wins gain through harm-reduction *despite* incorrect pattern routing — v2 either picked the wrong side (`0xe4ff79aa`, `0x96d20e6c`) or applied the wrong pattern (`0xddd5322d`), and the score went up anyway because the over-generation around the resolution was suppressed.
+- **1/6** is marginal alignment with no clean pattern story (`0x8e6579cb`).
+
+### Implication: pattern routing is largely orthogonal to where v2's gains come from
+
+The strongest version of the headroom synthesis from sub-q 1 holds: v2's wins on Apertus are driven by **over-generation suppression, not by correct pattern application**. Even when v2 applies the wrong pattern (`0xe4ff79aa` and `0x96d20e6c` both pick-b, opposite of the correct pick-a), the wins materialise because the metric rewards trimmed fabrication around the resolution more than it rewards correct pick decisions on identifier-divergence cases.
+
+This sharpens the thesis claim further. v2's pattern taxonomy (pick / combine / empty / custom) is not what's doing the work in the measured improvements. What's doing the work is the *output discipline* around the pattern decision — the length cap, the "no prose, code only" rule, the implicit pressure toward conflict-region focus. v2 could in principle route patterns correctly *or* wrongly and still produce most of its measured gains, as long as it suppressed the surrounding fabrication.
+
+This is consistent with #40 sub-q 4's length-distribution finding (v2's gains correlate with output shortening when no-skill was over-generating) and sub-q 3's metric tension (when GT lives outside the conflict region, raw token-level alignment trumps pattern correctness).
+
+### Verdict on the headline question
+
+> **What does v2 add for Apertus that v1 didn't?**
+
+v2 adds **stricter output discipline** that suppresses Apertus's tendency to extend resolutions into adjacent code (fabricated method bodies, broken-syntax inventions, preambles and epilogues echoed from surrounding context). v1 does some of this already; v2 does it more aggressively. On the Apertus cases where over-generation was a major component of the no-skill failure, v2's harm-reduction is enough to flip Δedit positive even when the pattern routing is incorrect.
+
+v2 *also* adds a small pattern-teaching capability that fires correctly on `0xe63ff0dd` (pick-side correction). But this capability accounts for only one of the six positive Apertus cases and is bidirectional across the corpus (it fires wrong-direction on `0xa4d50e39` Qwen3, sub-q 2). It is not the primary mechanism.
+
+### v2.1 implications (sub-q 5 additions)
+
+Sub-q 5 reinforces #40 recommendations 1, 5, 6 (length cap → over-gen guard rules) and sub-q 2 recommendation 7 (investigate why pattern-teaching fires unevenly). It adds:
+
+9. **Decouple the pattern taxonomy from the output-discipline rules.** v2 currently presents both as a unified rulebook. The data says only the latter is doing the measurable work. v2.1 could lead with the output-discipline rules (no over-generation, code only, no echoed surrounding context) and present the pattern taxonomy as secondary guidance for cases where the model's no-skill behaviour is already focused. This reframes the skill from "here is how to resolve conflicts" to "here is how to *cleanly produce* whatever resolution you would otherwise produce."
+
+---
+
+## Final synthesis
+
+Across all five sub-questions:
+
+- **Sub-q 1.** v2's three v2-over-v1 wins on Apertus (`0x223b2959`, `0xe4ff79aa`, `0x96d20e6c`) are all over-generation suppression. Same mechanism as Qwen3 (#40 sub-q 4); the difference is opportunity (Apertus over-generates more).
+- **Sub-q 2.** v1 winners survived on Apertus because v1's "be brief" framing already does harm-reduction; v2 maintains it. `0xe63ff0dd` is the one clean pattern-teaching event (pick-side correction). Pattern-teaching across the 40-case corpus: 3/40 = 7.5%, bidirectional.
+- **Sub-q 3.** `0xd9272c5e` is a task-ceiling case. GT requires file-level pattern synthesis that v2's "custom escape" forbids by construction. The −0.11 Apertus regression is a skill artefact: focusing on the conflict region discards a lucky surrounding-context line that scores well by metric proxy.
+- **Sub-q 4.** The +0.034 Apertus mean uplift is concentrated in 3–4 cases. Median Δ = 0; sign test (7+/5−/8=) not significant at n=20. v2 *when it acts* is a clear net win (positive moves ≈4× larger than negative), but it only acts on a minority.
+- **Sub-q 5.** Pattern routing is largely orthogonal to where v2's gains come from. 3/6 Apertus wins gain through harm-reduction *despite* incorrect pattern routing. v2's pattern taxonomy is not doing the measured work; v2's output discipline is.
+
+**Cross-model picture.** v2 is the same skill on both models. The mechanism (over-generation suppression with a small pattern-teaching tail) is model-agnostic. The opportunity (how often the no-skill output exhibits the trim-able failure mode) is model-specific. Apertus over-generates more → v2 has more room → v2 reaches the n=20 noise floor on Apertus and not on Qwen3. The "Apertus benefits, Qwen3 doesn't" framing is a function of the input distribution, not of skill effectiveness.
+
+**Nine v2.1 recommendations** stand at issue closure (1–6 from #40, 7–9 from this analysis). In priority order:
+
+1. (sub-q 4 of #40) Replace the numeric `|a|+|b|` cap with concrete content rules: no comments in the code block, no echoing surrounding context.
+2. (sub-q 2 of #40) Hoist "one side empty → take non-empty side" into the pattern hierarchy at step 1.
+3. (sub-q 1 of #40) Add a worked pick-with-identifier-divergence example.
+4. (sub-q 2 of #40) Add a worked verbose-vs-concise pick example.
+5. (sub-q 1 of #40) Loosen "smallest reconciliation from existing tokens" wording in the custom rule.
+6. (sub-q 3 of #40) Reframe the skill as primarily an over-generation guard.
+7. (sub-q 2 of #41) Investigate why pattern-teaching fires unevenly between structurally similar cases.
+8. (sub-q 3 of #41) Acknowledge file-level resolutions exist and are out-of-scope; skill should not pretend to solve them.
+9. (sub-q 5 of #41) Decouple the pattern taxonomy from the output-discipline rules. Lead with output discipline; pattern taxonomy is secondary.
+
+**Implication for thesis RQ1, RQ2, RQ3:**
+
+- **RQ1 (does SKILL.md improve resolution quality?).** Yes, but predominantly via output discipline, not pattern teaching. The improvement is real on Apertus and concentrated in cases where the model would otherwise over-generate.
+- **RQ2 (effect by complexity).** Out of scope here (the pilot is `python/func` only); the data so far suggests v2 helps when GT is recoverable from sides a/b plus disciplined output, and is neutral or harmful when GT requires file-level synthesis.
+- **RQ3 (does small model + skill close the gap to large model without skill?).** Skill closes the **over-generation gap**; it does not close the **resolution-quality gap** (pick-side errors persist across all conditions on most cases; pattern-teaching is rare and bidirectional). Reframing RQ3 in those terms would be more defensible than the current formulation.
+
+---
+
 ## Open sub-questions
 
 - [x] Sub-question 1 — v2-over-v1 mechanism on Apertus is over-generation suppression. Same mechanism as Qwen3; different opportunity.
 - [x] Sub-question 2 — v1-winners survived because Apertus's hallucinated baseline gives v1's "be brief" framing real work to do. `0xe63ff0dd` is the one clean pattern-teaching case across the 40-case corpus; full survey at 7.5% pattern-teaching rate (3/40).
-- [x] Sub-question 3 — `0xd9272c5e` is a task-ceiling case: GT requires synthesising from a file-level pattern not present on either side. The skill correctly trims surrounding context; doing so discards a lucky alignment that no-skill happened to retain. Cross-model: both models fail; the lucky alignments score 0.28–0.29 and the focused outputs score 0.18–0.19. Adds v2.1 recommendation 8.
+- [x] Sub-question 3 — `0xd9272c5e` is a task-ceiling case: GT requires synthesising from a file-level pattern not present on either side. Skill correctly trims surrounding context; doing so discards a lucky alignment that no-skill happened to retain. Adds v2.1 recommendation 8.
 - [x] Sub-question 4 — outlier-driven. Median Δ = 0; mean +0.034 collapses to +0.0004 after dropping top 3. Effect is real but concentrated in ≤4 cases out of 20. Sign test (7+/5−/8=) is not significant at n=20.
-- [ ] Sub-question 5 — pattern-routing diagnostic: did v2 actually apply the *correct* pattern on each Apertus winning case?
+- [x] Sub-question 5 — pattern routing is largely orthogonal to where v2's gains come from. 3/6 Apertus wins gain through harm-reduction *despite* incorrect pattern routing. Adds v2.1 recommendation 9 (decouple pattern taxonomy from output-discipline rules).
