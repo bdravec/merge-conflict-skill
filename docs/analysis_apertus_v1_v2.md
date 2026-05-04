@@ -165,10 +165,78 @@ This sharpens v2.1 recommendation 6 from #40 (reframe as over-generation guard) 
 
 ---
 
+## Sub-question 2 — v1-winners survival on Apertus
+
+The two cases the issue identifies as Apertus v1 winners — `0xa4d50e39def807dd` (+0.226 in v1, +0.226 in v2) and `0xe63ff0ddae988357` (+0.219 in v1, +0.272 in v2) — both survived the v2 redesign. On Qwen3, the same case-IDs were v1's two biggest *losers* (see #40 premise correction). The cross-model flip needs explanation.
+
+### `0xa4d50e39` — harm-reduction explains both directions
+
+The conflict combines side a's `with tf_ops.init_scope():` block with side b's `tf_dtype = tf.as_dtype(dtype)` line. Ground truth requires a custom resolution (a `n, m = size` unpack that exists on neither side; see #40 sub-q 1 case B).
+
+Per-condition outputs on Apertus:
+
+| Condition | Output (truncated) |
+|---|---|
+| no-skill (0.24) | `@symbolic\ndef zeros_like(x, dtype=None, name=None):\n    """Instantiates an all-zeros variable...\n    Parameters: ...\n    """\n    if dtype is None: dtype = floatx()\n    tf_dtype = tf.as_dtype(dtype)\n    return variable(tf.eye(size, dtype=tf_dtype), dtype, name)` |
+| v1-sys (0.47) | `with tf_ops.init_scope():\n    return variable(tf.eye(size, dtype=tf.as_dtype(dtype)), dtype, name)` |
+| v2-sys (0.47) | identical to v1-sys |
+
+Apertus's no-skill output is a **hallucinated function definition** — it invented a `@symbolic` decorator, a `zeros_like` function name (the file is `tensorflow_backend.py`, the function is unrelated), a multi-line docstring, and parameter descriptions, all before getting to the actual conflict resolution. v1's "be brief" framing alone is enough to suppress this: v1's two-line combine is what no-skill *should* have produced.
+
+The Qwen3 mirror image: Qwen3 no-skill already produces a clean three-line combine (#40 sub-q 1 case B); v1 *introduces* a context-leak by adding `if dtype is None: dtype = floatx()`, and v2 trims `init_scope` away under the length cap. Same skill, applied to two models with very different baseline failure modes — fixes catastrophic hallucination on Apertus, disrupts a working combine on Qwen3.
+
+This is the same harm-reduction asymmetry as sub-q 1's three v2-over-v1 cases. Apertus over-generates; v1 trims; v2 maintains.
+
+### `0xe63ff0dd` — harm-reduction *plus* a real pattern-teaching effect
+
+The conflict is a textbook pick-a (side a's `K.placeholder(shape=..., dtype=K.floatx())` matches surrounding-code style; side b's `tf.placeholder(dtype=K.floatx())` is the lower-level API). Ground truth is exact pick-a.
+
+| Condition | Pick side | Trimmed over-gen? | Edit |
+|---|---|---|--:|
+| no-skill | b (`tf.placeholder`) — wrong | no (kept `# test merge`, `concatenate`, `add` block) | 0.43 |
+| v1-sys | b (`tf.placeholder`) — wrong | yes | 0.65 |
+| v2-sys | **a (`K.placeholder`) — correct** | no (kept the over-gen block) | 0.70 |
+
+v1's gain over no-skill (+0.22) is pure harm-reduction: same wrong pick, but trimmed the post-conflict `# test merge` invention. v2's gain over v1 (+0.05) is a different mechanism: **v2 flipped the pick from b to a**, while keeping the over-generation block that v1 had trimmed.
+
+This is the only case across the entire 40-case (2 models × 20 cases) corpus where v2 applies a pick decision the model did not make under no-skill or v1, and applies it correctly. v2's pick criterion ("which side is more consistent with the surrounding code") fired here: surrounding code uses `K.` prefixes consistently, side a matches, and v2 picked a. This is genuine pattern-teaching, not harm-reduction.
+
+### Survey: pattern-teaching across the full corpus
+
+To check whether `0xe63ff0dd` is unique or representative, I inspected every v2-over-v1 case where the score changed by more than ±0.05 across both models:
+
+| Case | Model | v2-over-v1 Δ | Mechanism |
+|---|---|--:|---|
+| `0xe63ff0dd` | Apertus | +0.053 | **Pattern-teaching:** v2 flipped pick from b (wrong) to a (correct) |
+| `0xddd5322d` | Apertus | +0.030 | **Weak pattern-teaching:** v2 applied combine (`if not None:` from a + `else:` from b); GT wants custom, so gain is +0.003 vs no-skill |
+| `0xa4d50e39` | Qwen3 | −0.030 | **Wrong-direction pattern-teaching:** v2 changed resolution from correct combine to pure pick-b |
+| `0x223b2959` | Apertus | +0.172 | Harm-reduction (v2 suppressed v1's invented method body) |
+| `0xe4ff79aa` | Apertus | +0.187 | Harm-reduction (trim) |
+| `0x96d20e6c` | Apertus | +0.134 | Harm-reduction (trim) |
+| `0x96d20e6c` | Qwen3 | +0.004 | Harm-reduction (same correct pick, trimmed surrounding) |
+| `0x999797db` | Qwen3 | +0.138 | Harm-reduction (v1 already changed pick — to wrong side; v2 inherited and trimmed) |
+| `0x32d8c89b` | Qwen3 | +0.064 | Lucky variation (GT is a custom rewrite; v2 produced different content that happened to align with parts of GT — no clean pattern applies) |
+
+**Pattern-teaching is real but rare: 3/40 model-cases (7.5%).** One right-direction (`0xe63ff0dd` Apertus), one weak/marginal (`0xddd5322d` Apertus, +0.003), one wrong-direction (`0xa4d50e39` Qwen3, regression). Two of the three pattern-teaching events are on Apertus — but the headroom mechanism alone explains why v2 helps Apertus more, since the bulk of v2's effect is harm-reduction in both models.
+
+### Refining the thesis claim
+
+The picture from #40 said "v2 is doing harm-reduction, not skill-elevation." Sub-q 2 nuances this: v2 is *predominantly* harm-reduction (≥35/40 model-cases), with a **secondary pattern-teaching capability** that surfaces in ~5% of cases. The pattern-teaching capability is bidirectional — it can help (`0xe63ff0dd`'s pick correction) or hurt (`0xa4d50e39`'s combine→pick regression) — and the conditions that determine direction aren't currently characterised.
+
+For the thesis: claiming v2 is "purely" a harm-reduction skill would understate the data. Claiming v2 is "primarily a pattern-teaching skill" overstates it. The defensible framing is *"v2 is a harm-reduction skill with a small, bidirectional pattern-teaching effect."* Sub-q 5 (pattern-routing diagnostic) is now positioned to ask whether v2's pattern-teaching is *correctly* routed when it does fire.
+
+### v2.1 implications (sub-q 2 additions)
+
+The earlier #40 v2.1 recommendations (1–6) all hold. Sub-q 2 adds one consideration:
+
+7. **Investigate why pattern-teaching fires unevenly.** v2's pick criterion ("consistency with surrounding code") worked on `0xe63ff0dd` Apertus but didn't fire on the structurally similar `0xe4ff79aa` Apertus (where the model also picked the wrong side, `poolsize` instead of `pool_size`, and v2 didn't correct it). The difference between the two cases is worth understanding — both involve identifier-divergence-with-surrounding-context-tiebreaker, but only one was decided correctly. A worked example covering both shapes (per #40 recommendation 3) might surface what's missing.
+
+---
+
 ## Open sub-questions
 
 - [x] Sub-question 1 — v2-over-v1 mechanism on Apertus is over-generation suppression. Same mechanism as Qwen3; different opportunity.
-- [ ] Sub-question 2 — why did v1 winners (`0xa4d50e39`, `0xe63ff0dd`) survive on Apertus but flip on Qwen3?
+- [x] Sub-question 2 — v1-winners survived because Apertus's hallucinated baseline gives v1's "be brief" framing real work to do. `0xe63ff0dd` is the one clean pattern-teaching case across the 40-case corpus; full survey at 7.5% pattern-teaching rate (3/40).
 - [ ] Sub-question 3 — persistent Apertus loss `0xd9272c5e0e8f15ee` (−0.11 in both v1 and v2).
 - [x] Sub-question 4 — outlier-driven. Median Δ = 0; mean +0.034 collapses to +0.0004 after dropping top 3. Effect is real but concentrated in ≤4 cases out of 20. Sign test (7+/5−/8=) is not significant at n=20.
 - [ ] Sub-question 5 — pattern-routing diagnostic: did v2 actually apply the *correct* pattern on each Apertus winning case?

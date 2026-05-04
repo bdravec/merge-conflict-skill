@@ -92,6 +92,8 @@ The case is also a custom-pattern case, so neither v1 nor v2 can score above ~0.
 
 v2 traded one failure mode (over-generation, context-leak) for a different one (over-trimming under the length cap). On `0xe63ff0dd` the trade is positive (no-skill happened to be near-optimal). On `0xa4d50e39` the trade is negative (no-skill *was* optimal, v2 took bites out of it).
 
+> **Cross-reference (added 2026-05-04):** the `0xa4d50e39` regression on Qwen3 also fits a different framing developed in [`analysis_apertus_v1_v2.md`](analysis_apertus_v1_v2.md) sub-q 2 — it is the one case in the 40-case corpus where v2 changed the model's *pattern* decision in the wrong direction (combine → pick-b). The Apertus analysis identifies one right-direction pattern-teaching event (`0xe63ff0dd` Apertus pick-correction) and one marginal one (`0xddd5322d` Apertus combine attempt). v2's pattern-teaching effect is real but rare (3/40 model-cases) and bidirectional. The harm-reduction story remains primary on both models.
+
 ---
 
 ## Implications for v2.1
