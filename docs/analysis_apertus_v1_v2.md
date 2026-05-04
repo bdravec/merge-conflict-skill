@@ -1,7 +1,7 @@
 # Analysis — Apertus-8B v1 vs v2 SKILL.md
 
 **Date:** 2026-05-04
-**Issue:** [#41](https://github.com/bdravec/2/issues/41)
+**Issue:** [#41](https://github.com/bdravec/merge-conflict-skill/issues/41)
 **Inputs:**
 - v1-skill 3-condition: [`pilot_results_apertus_v2.md`](pilot_results_apertus_v2.md), `scripts/results/pilot_results_apertus_v2.jsonl`
 - v2-skill 3-condition: [`pilot_results_apertus_skill-v2.md`](pilot_results_apertus_skill-v2.md), `scripts/results/pilot_results_apertus_skill-v2.jsonl`
