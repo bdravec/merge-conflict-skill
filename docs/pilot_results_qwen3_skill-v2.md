@@ -139,11 +139,30 @@ skill-v1-sys had 8 cases where the skill made things worse; skill-v2-sys has 5. 
 
 ### 6. The case-level pattern shifted
 
-v1 had two strong winners (`0xa4d50e39def807dd` and `0xe63ff0ddae988357`, both +0.22 edit). v2 loses both — they go negative or flat.
+> **Correction (2026-05-04):** an earlier draft of this section claimed v1 had two strong winners (`0xa4d50e39def807dd` and `0xe63ff0ddae988357`, both +0.22). That claim was wrong — both cases were v1's *biggest losers* on Qwen3 (Δ −0.12 and −0.40 in v1-sys). Issue [#40](https://github.com/bdravec/merge-conflict-skill/issues/40) inherited the bad framing. The corrected case-level picture is below.
 
-v2 has new winners (`0x96d20e6c9b0f2395` +0.18, `0x999797db0c12ab9d` +0.14 in sys, `0x32d8c89b39c2860b` +0.06).
+**v1-sys edit winners (Δ vs no-skill, Qwen3):**
 
-The v2 wins are smaller in magnitude but more distributed. Combined with the loss-reduction in finding 4, this suggests v2 is a less brittle skill: less peak gain in any one case, more consistent near-baseline behavior.
+| Case | v1-sys Δ | v2-sys Δ | preserved by v2? |
+|---|---:|---:|---|
+| `0x96d20e6c9b0f2395` | +0.1794 | +0.1836 | ✅ preserved (slightly improved) |
+| `0xd752694df9c5ba20` | +0.1317 | 0.0000 | ❌ lost (v2 falls back to no-skill) |
+| `0xbe50e025d8e4d344` | +0.0427 | 0.0000 | ❌ lost |
+| `0xc00c4d82b7364e6d` | +0.0403 | +0.0403 | ✅ preserved |
+
+**v2-sys new contributions** (cases that were 0 or negative in v1, positive in v2):
+
+| Case | v1-sys Δ | v2-sys Δ |
+|---|---:|---:|
+| `0x999797db0c12ab9d` | −0.0015 | +0.1363 |
+| `0x32d8c89b39c2860b` | 0.0000 | +0.0642 |
+| `0x6081a18de8689da7` | 0.0000 | +0.0088 |
+
+**v2-sys also recovers v1's largest loss:** `0xe63ff0ddae988357` went from −0.3995 (v1-sys) to 0.0000 (v2-sys); the output is byte-identical to no-skill. v1's other large loss `0xa4d50e39def807dd` got slightly worse under v2 (−0.1185 → −0.1481).
+
+The v2 wins are more distributed but the gross improvement comes from converting v1 *losses* to ties more than from new wins. Combined with finding 4 (fewer losses) and finding 5 (more no-skill-identical outputs), this is consistent with v2 being a less brittle skill that backs off when its rules don't fit, rather than a stronger skill that helps in more cases.
+
+See [`analysis_qwen3_v1_v2.md`](analysis_qwen3_v1_v2.md) for the case-level diff of `0xa4d50e39` and `0xe63ff0dd`.
 
 ### 7. Worst-case behavior is largely unchanged
 
