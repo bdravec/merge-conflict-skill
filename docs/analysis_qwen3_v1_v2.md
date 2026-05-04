@@ -142,7 +142,7 @@ The unifying mechanism is not "shorter side" specifically — it is *whichever s
 
 ### Cross-cutting observation
 
-All five losses share a single underlying tendency: **v2-sys produces shorter outputs than no-skill, and the shorter output is the wrong answer.** This is consistent with finding 5 in the v2 results doc (v2 produces more no-skill-identical outputs, and when it diverges, it diverges shorter). The length cap, the empty-pattern position in the hierarchy, and the "smallest reconciliation" wording in the custom rule all push in the same direction.
+Four of the five losses share a single underlying tendency: **v2-sys produces shorter outputs than no-skill, and the shorter output is the wrong answer.** The exception is `0xddd5322d` — see sub-q 4 for the corrected picture (v2 *lengthens* that case rather than shortening it; the failure is over-generation, not under-generation). For the other four (`0x223b2959`, `0x520debc6`, `0x7fb96fbf`, `0xa4d50e39`), the length cap, the empty-pattern position in the hierarchy, and the "smallest reconciliation" wording in the custom rule all push the model toward outputs that are too short.
 
 ### v2.1 implications (sub-q 2 additions)
 
@@ -156,8 +156,90 @@ Adding to the two recommendations from sub-q 1:
 
 ---
 
+## Sub-question 4 — output length distribution v1 vs v2
+
+The skill v2 §"Output format" rule states *"the output must be no longer than `|a| + |b|` characters."* Sub-q 4 asks whether that rule actually changes output lengths, and whether shortening helps or hurts edit similarity.
+
+### Aggregates (n=20, character lengths)
+
+| Condition | median | mean | over-cap | edit mean |
+|---|---:|---:|---:|---:|
+| no-skill | 323.5 | 518.5 | 13/20 | 0.3953 |
+| skill-v1-sys | 355.5 | 514.7 | 12/20 | 0.3479 |
+| skill-v1-user | 485.0 | 591.0 | 15/20 | 0.3511 |
+| **skill-v2-sys** | **274.5** | **428.1** | **11/20** | **0.3836** |
+| skill-v2-user | 308.0 | 471.6 | 11/20 | 0.3558 |
+
+**v2 does shorten outputs.** Median length drops from 324 to 275 (−15%), mean from 519 to 428 (−17%) under v2-sys. v1 does *not* shorten — v1-sys median is actually higher than no-skill (356 vs 324), and v1-user is much longer (485). The shortening is a v2-specific effect.
+
+### The `|a|+|b|` cap is not enforced
+
+11/20 v2-sys outputs exceed the cap, including some egregious violators:
+
+| Case | cap | v2-sys length | factor |
+|---|---:|---:|---:|
+| `0xc00c4d82b7364e6d` | 131 | 2819 | 21.5× |
+| `0x32d8c89b39c2860b` | 54 | 903 | 16.7× |
+| `0x425cf8014eda936b` | 88 | 810 | 9.2× |
+| `0xddd5322de12565fe` | 116 | 396 | 3.4× |
+
+The cap is doing what a soft prior does — it shifts the distribution toward shorter outputs — but it does not bind on individual cases. A model that respected the cap would never produce a 2819-character output for a conflict with `|a|+|b|=131`. The cap is currently functioning as a vague "be brief" signal, not an enforced constraint.
+
+### Length-shift vs edit-shift relative to no-skill
+
+| Condition | shorter (n) | mean Δedit | longer (n) | mean Δedit | same (n) |
+|---|---:|---:|---:|---:|---:|
+| skill-v1-sys | 4 | −0.025 | 10 | −0.085 | 6 |
+| skill-v1-user | 2 | −0.019 | 13 | −0.065 | 5 |
+| **skill-v2-sys** | **10** | **−0.007** | **1** | **−0.163** | **9** |
+| skill-v2-user | 8 | −0.008 | 5 | −0.146 | 7 |
+
+Two readings:
+
+1. **v1 hurt the most when it lengthened.** The 10–13 cases where v1 produced longer outputs averaged Δedit −0.07 to −0.09 — the dominant failure mode for v1 was over-generation. Fixing that was the central design intent of v2.
+2. **v2-sys's shortening is net neutral on average (−0.007), but variance is high.** The 10 v2-sys shortenings break down as:
+
+| Case | Δlen | Δedit | reading |
+|---|---:|---:|---|
+| `0x96d20e6c9b0f2395` | −432 | **+0.184** | trimmed over-generation |
+| `0x999797db0c12ab9d` | −410 | **+0.136** | trimmed over-generation |
+| `0x32d8c89b39c2860b` | −234 | +0.064 | trimmed over-generation |
+| `0xc00c4d82b7364e6d` | −472 | +0.040 | trimmed over-generation |
+| `0x6081a18de8689da7` | −203 | +0.009 | trimmed over-generation |
+| `0xc6a534710cc98bb7` | −1 | 0.000 | tiny trim, no effect |
+| `0x223b29598e1c5cb9` | −41 | −0.037 | trimmed correct content |
+| `0x7fb96fbf0a030ea` | −70 | **−0.099** | trimmed correct content |
+| `0xa4d50e39def807dd` | −34 | **−0.148** | trimmed correct content |
+| `0x520debc691c88dc5` | −184 | **−0.222** | trimmed correct content |
+
+The split is clean: shortening **helps** when no-skill was over-generating (top half — large trims, positive Δedit), and **hurts** when no-skill was already close to optimal (bottom half — smaller trims, negative Δedit). The net is nearly neutral because the gains and losses are similar in magnitude.
+
+### The one v2-sys case that lengthened
+
+`0xddd5322de12565fe`: no-skill=125 → v2-sys=396 (+271 chars), Δedit −0.163. Both v1 and v2 add an over-generation block (`# build an all-zero tensor…`, `initial_output = T.unbroadcast(…)`) that exists nowhere in the conflict region. The skill text doesn't suppress this — the model attaches the comment+code block regardless of the skill content. This is the same case that contradicts sub-q 2's cross-cutting "shorter is wrong" framing (corrected above).
+
+### Implication for v2.1 — replace the cap with an over-generation guard
+
+The character-count cap is the wrong mechanism. The model can't reliably count characters at inference time, and the cap is violated by 21× in the worst case. What the cap is *trying* to express — "don't add commentary or external code beyond the conflict region" — should be stated directly as content rules, not as a numeric limit:
+
+- **Don't add comments inside the code block.** Already in v2 §"Output format" but not as its own rule. Promote to a top-level constraint.
+- **Don't repeat content from the surrounding context unless the resolution requires it.** The cases that blow the cap by 9–21× are all wrapping the resolution in re-explanations of the conflict context (`0xc00c4d82` is a 25× explainer; `0x425cf8014eda936b` is a 9× explainer). Stating "do not echo the surrounding context back" would be more enforceable than a length number.
+- **Replace the numeric cap with a check.** *"After producing the output, ask: is this longer than the union of side a and side b? If so, you have likely added unnecessary content."* The check at the end of generation is more likely to fire than a cap-during-generation.
+
+This refines v2.1 recommendation 5 from sub-q 2 (which already said "reframe the length cap as an over-generation guard") with concrete content.
+
+### Summary of length findings
+
+- v2 shortens outputs (median −15%); v1 does not.
+- The cap is not enforced — the worst violator is 21× over.
+- Shortening helps when no-skill was over-generating, hurts when no-skill was close to optimal. v2's net effect on the 10 shortened cases is nearly zero.
+- v1's dominant failure mode was over-generation; v2 mitigates it but at the cost of trimming correct content in 4–5 cases.
+- One v2-sys loss (`0xddd5322d`) is a *length-up* failure, not a length-down failure.
+
+---
+
 ## Open sub-questions
 
-- [x] Sub-question 2 — three shapes identified (one-side-empty pick error, verbose-vs-concise pick error, length-cap structural trim). v2.1 has 5 concrete recommendations.
+- [x] Sub-question 2 — three shapes identified.
 - [ ] Sub-question 3: headroom hypothesis on no-skill wins.
-- [ ] Sub-question 4: output-length distribution v1 vs v2.
+- [x] Sub-question 4 — v2 shortens (median −15%); cap not enforced; shortening is net neutral (helps over-generators, hurts close-to-optimal cases). v2.1 recommendation 5 refined: replace numeric cap with concrete over-generation guards.
