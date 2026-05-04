@@ -233,10 +233,82 @@ The earlier #40 v2.1 recommendations (1–6) all hold. Sub-q 2 adds one consider
 
 ---
 
+## Sub-question 3 — persistent Apertus loss on `0xd9272c5e0e8f15ee`
+
+The case scores Δedit −0.112 in v1-sys, v1-user, v2-sys, *and* v2-user on Apertus (Apertus no-skill 0.289, all skill conditions 0.177). Sub-q 3 asks: is this model-specific, shape-specific, or beyond 8B-scale capability?
+
+### Conflict and ground truth
+
+```
+<<<<<<< a
+            x = nn.bias_add(x, bias,
+=======
+            x = tf.nn.bias_add(x, bias,
+>>>>>>> b
+                               data_format='NCHW')
+```
+
+Two sides differ by a single token (the `tf.` prefix). Surface-shape: textbook pick.
+
+Ground truth:
+
+```
+            # No support yet for NCHW in bias_add.
+            x += reshape(bias, (1, int_shape(bias)[0], 1, 1))
+        elif data_format == 'channels_last':
+```
+
+GT throws away *both* sides. It writes a comment explaining the abandonment and replaces `bias_add` with `x += reshape(bias, (1, int_shape(bias)[0], 1, 1))` — a line that matches the **file-level surrounding-code pattern**. The file has analogous `x += reshape(bias, ...)` lines for ndim=3 and ndim=5 in the lines around the conflict; GT extends that pattern to ndim=4 by abandoning the bias_add approach entirely.
+
+The right resolution requires recognising the file pattern and synthesising a new line consistent with it, using tokens that exist neither in side a nor in side b.
+
+### Per-condition outputs (both models)
+
+| Model | Condition | Pick | Surrounding context retained? | Edit |
+|---|---|---|---|--:|
+| Apertus | no-skill | a (`nn.bias_add`) | yes (5 lines incl. `x += reshape(bias, (1, int_shape(bias)[0], 1))`) | **0.289** |
+| Apertus | v1-sys / v1-user / v2-sys / v2-user | a (`nn.bias_add`) | no | 0.177 |
+| Qwen3 | no-skill, v1-sys, v2-sys, v2-user | b (`tf.nn.bias_add`) | no | 0.193 |
+| Qwen3 | v1-user | b (`tf.nn.bias_add`) | yes (5 lines, same as Apertus no-skill) | **0.280** |
+
+The two highest-scoring outputs (Apertus no-skill, Qwen3 v1-user) both share one feature: they leaked the line from below the conflict — `x += reshape(bias, (1, int_shape(bias)[0], 1))` — into the resolution. That line is structurally close to GT's synthesised line (`x += reshape(bias, (1, int_shape(bias)[0], 1, 1))`); the only difference is the trailing `, 1` for the extra dimension. The metric credits the close-match line.
+
+### Mechanism
+
+The skill does exactly what it's designed to do: trim surrounding context, focus on the conflict region. On this particular case, that design *discards* the lucky line that no-skill happened to retain. Both v1 and v2 produce the same shorter output (just the conflict region resolution), and that output scores worse than no-skill's longer-with-leak output.
+
+The skill's behaviour is **not wrong**. It's correctly applying its rules to a conflict that has the surface shape of a pick. What the skill can't see is that the right resolution lives in a file-level architectural pattern that neither side encodes.
+
+### Is this model-, shape-, or capability-specific?
+
+**Not model-specific.** Both models fail. The two highest scores come from accidental context retention, on different injection positions (Apertus no-skill, Qwen3 v1-user) — the underlying mechanism is the same.
+
+**Not shape-specific in v2's taxonomy.** The conflict has the surface shape of a clean pick. v2's pattern hierarchy correctly classifies it as such. The mismatch is between the surface shape and the actual semantic resolution required.
+
+**Capability-specific.** Recovering GT requires three things in sequence: (1) recognising that the file-level pattern uses `x += reshape(bias, ...)` for each ndim-and-data-format combination, (2) inferring that the bias_add path in the conflict is therefore inconsistent with that pattern, and (3) synthesising a new line that fits the pattern using the right shape tuple. None of these is achievable at 8B scale via the current task framing — the model sees only ±5 lines of context and is asked to pick or combine. v2 §"Custom escape" explicitly forbids the right answer: it requires *"smallest reconciliation from existing tokens"* and existing tokens means sides a and b, not surrounding code.
+
+### A note on metric mechanics
+
+`0xd9272c5e` exposes a tension in the ConGra edit-similarity metric: when GT lives outside the conflict region, *retaining surrounding context becomes a proxy* for the pattern-recognition the model can't actually do. The metric rewards leak, not understanding. This is structurally similar to over-generation (which inflates the denominator and depresses scores when the leak is wrong) but with the opposite sign: when the leak happens to align with GT, it inflates the score.
+
+For the thesis, this argues for a metric that distinguishes "right content in the right structure" from "right tokens leaked from anywhere nearby." The current setup conflates these.
+
+### Verdict
+
+`0xd9272c5e` is a **task-ceiling case**, not a skill failure. The −0.11 Apertus skill regression is a skill artefact: v1 and v2 both do what they're designed to do (focus on the conflict region), and on this case that design discards a lucky alignment that the metric rewards. Both Qwen3 and Apertus can't produce GT under any condition. The case should be categorised in Chapter 6 alongside `0x425cf8014eda936b` (the 14×-over-generation case) as a model-capability ceiling case at 8B.
+
+### v2.1 implications (sub-q 3 additions)
+
+The earlier #40 v2.1 recommendations (1–6) and sub-q 2 recommendation 7 all hold. Sub-q 3 adds:
+
+8. **Acknowledge file-level resolutions exist and are out of scope.** v2 §"Custom escape" should explicitly state that some conflicts have GT resolutions that depend on file-level patterns invisible to the conflict-region view. The skill cannot solve these and should not pretend to. A short sentence to that effect would prevent the model from over-confidently picking when the right answer is "neither side, and the right answer needs more context than I have." This is also a candidate for a Chapter 7 limitation.
+
+---
+
 ## Open sub-questions
 
 - [x] Sub-question 1 — v2-over-v1 mechanism on Apertus is over-generation suppression. Same mechanism as Qwen3; different opportunity.
 - [x] Sub-question 2 — v1-winners survived because Apertus's hallucinated baseline gives v1's "be brief" framing real work to do. `0xe63ff0dd` is the one clean pattern-teaching case across the 40-case corpus; full survey at 7.5% pattern-teaching rate (3/40).
-- [ ] Sub-question 3 — persistent Apertus loss `0xd9272c5e0e8f15ee` (−0.11 in both v1 and v2).
+- [x] Sub-question 3 — `0xd9272c5e` is a task-ceiling case: GT requires synthesising from a file-level pattern not present on either side. The skill correctly trims surrounding context; doing so discards a lucky alignment that no-skill happened to retain. Cross-model: both models fail; the lucky alignments score 0.28–0.29 and the focused outputs score 0.18–0.19. Adds v2.1 recommendation 8.
 - [x] Sub-question 4 — outlier-driven. Median Δ = 0; mean +0.034 collapses to +0.0004 after dropping top 3. Effect is real but concentrated in ≤4 cases out of 20. Sign test (7+/5−/8=) is not significant at n=20.
 - [ ] Sub-question 5 — pattern-routing diagnostic: did v2 actually apply the *correct* pattern on each Apertus winning case?
