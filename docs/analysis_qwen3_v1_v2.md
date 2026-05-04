@@ -108,8 +108,56 @@ A third recommendation requires a separate run to test:
 
 ---
 
+## Sub-question 2 — what characterises the 5 v2-sys losses?
+
+The five cases where v2-sys scores below no-skill are `0x223b29598e1c5cb9`, `0x520debc691c88dc5`, `0x7fb96fbf0a030ea`, `0xa4d50e39def807dd`, and `0xddd5322de12565fe`. `0xa4d50e39` is already characterised above (case B). The remaining four cluster into two recurring shapes.
+
+### Shape 1 — "one side empty, v2 picks the empty side" (2/5)
+
+| Case | Side a | Side b | v2-sys output |
+|---|---|---|---|
+| `0x223b29598e1c5cb9` | `assert self.subsample == (1, 1)` | (empty) | dropped the assert (took b) |
+| `0x7fb96fbf0a030ea` | `if isinstance(mask, list): return mask[0]` | (empty) | dropped the lines (took b) |
+
+In both, side b is a deletion (empty content) while side a adds a guard. v2 §"Edge cases" line 118 explicitly says *"One side empty: take the non-empty side (this is pick, not the empty pattern — that one needs both sides to be deletions)."* The model violated this rule on both cases.
+
+The mechanism appears to be ordering. v2's pattern hierarchy at the top of §"Resolution strategy" lists the **empty test** as step 1: *"Both sides are deletions or whitespace-only → empty (produce no content)."* The edge-case override that says "one side empty is *pick*, not *empty*" is buried in §"Edge cases" near the end of the file. A model under temperature 0 that reads top-down and stops at the first matching rule will fire the empty pattern when one side is whitespace and never reach the override.
+
+In both cases the ground truth is custom anyway, so no skill version recovers fully — but no-skill and v1-sys at least kept side a's lines (Δ = 0 vs no-skill), giving them a higher score on the surrounding context. v2-sys threw those lines away.
+
+### Shape 2 — "v2 picks the more concise side when ground truth wants the verbose side" (2/5)
+
+| Case | Side a (verbose) | Side b (concise) | Ground truth | v2-sys |
+|---|---|---|---|---|
+| `0x520debc691c88dc5` | tuple-or-string handling for `field_name`, separate `item_field`/`output_field` | one-line `field_name` lookup | extends side a | pick-b |
+| `0xddd5322de12565fe` | `if mask is not None:` (one-line guard) | `if mask is None: ... else:` (multi-line) | side a + new context | pick-b |
+
+`0x520debc6…` is the cleaner of the two: side a explicitly adds a code path that ground truth keeps, side b removes it. v2 takes side b. `0xddd5322d…` is the inverse case (side b is the verbose one); v2 again takes the more elaborated form, which happens to be wrong here.
+
+The unifying mechanism is not "shorter side" specifically — it is *whichever side the model judges syntactically simpler under the v2 framing*. v2's pick criterion ("which side is more consistent with the surrounding code") is the one rule that should help here, but the length cap and the "no prose, code only, smallest reconciliation" framing all bias toward simplicity over completeness. When the verbose side is the correct one, that bias hurts.
+
+### Shape 3 — "custom case + length cap trims a correct line" (1/5)
+
+`0xa4d50e39def807dd`. Already covered as case B above. The v2 length cap stripped `with tf_ops.init_scope():` from a clean combine that no-skill produced.
+
+### Cross-cutting observation
+
+All five losses share a single underlying tendency: **v2-sys produces shorter outputs than no-skill, and the shorter output is the wrong answer.** This is consistent with finding 5 in the v2 results doc (v2 produces more no-skill-identical outputs, and when it diverges, it diverges shorter). The length cap, the empty-pattern position in the hierarchy, and the "smallest reconciliation" wording in the custom rule all push in the same direction.
+
+### v2.1 implications (sub-q 2 additions)
+
+Adding to the two recommendations from sub-q 1:
+
+3. **Move the "one side empty" override into the pattern hierarchy.** The current edge-case position is too late in the document for the model to apply it under top-down reading. Either re-state it in step 1 of §"Resolution strategy" (*"Both sides are deletions or whitespace-only — note that if only one side is empty, this is **pick**"*) or split the empty test into two sub-cases (one-side-empty → pick non-empty, both-empty → empty pattern).
+
+4. **Add a "verbose vs concise" worked example.** v2's pick criterion needs an example where the verbose side is correct. The `0x520debc6…` case (tuple-or-string handling) is a good candidate template, since the verbose side encodes a real semantic distinction (separate `item_field` and `output_field`) that the concise side flattens away. The skill should make explicit that *concise is not a tiebreaker*; surrounding-code consistency is.
+
+5. **The length cap discussion should reference shapes 1 + 3 together.** Sub-q 1 already flagged the cap as too tight on combine; sub-q 2 adds that the same cap-driven minimisation pressure leaks into pick decisions ("when in doubt, pick shorter"). v2.1's revised cap should make clear that the cap blocks *over-generation only* and is not a target.
+
+---
+
 ## Open sub-questions
 
-- [ ] Sub-question 2: characterise the 5 v2-sys losses (`0x223b29598e1c5cb9`, `0x520debc691c88dc5`, `0x7fb96fbf0a030ea`, `0xa4d50e39def807dd`, `0xddd5322de12565fe`).
+- [x] Sub-question 2 — three shapes identified (one-side-empty pick error, verbose-vs-concise pick error, length-cap structural trim). v2.1 has 5 concrete recommendations.
 - [ ] Sub-question 3: headroom hypothesis on no-skill wins.
 - [ ] Sub-question 4: output-length distribution v1 vs v2.
