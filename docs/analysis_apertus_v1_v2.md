@@ -56,13 +56,15 @@ v2-sys does not produce a pattern-correct resolution; it produces a no-skill-lik
 
 **`0xe4ff79aa` — new v2 win (+0.187 over v1, +0.169 over no-skill)**
 
+> *Correction (2026-05-06):* the per-condition pick descriptions originally written for this case attributed Qwen3's pick (`poolsize`, side b) to Apertus. Apertus actually picks side a (`pool_size`, correct) in every condition; verified via `scripts/inspect_case.py 0xe4ff79aa`. The per-condition body descriptions were also mis-labelled (the `tuple(slice(...))` body originally attributed to no-skill is actually v1-sys's output). Corrected paragraph below.
+
 The conflict differs only in identifier (`pool_size` vs `poolsize`); ground truth picks side a and adds new lines after.
 
-- *no-skill* (0.45): pick-b for the conflict region itself, then continued generating an `@property def output_shape(self):` body with a malformed `tuple(slice(s, s + p - 1) for s, p in zip(...))` expression. Broken syntax.
-- *v1-sys* (0.43): same pick-b, same fabricated `output_shape` body, different broken-syntax slice expressions.
-- *v2-sys* (0.62): same pick-b, but stops at `input_shape = self.input_shape`. The fabricated body is gone.
+- *no-skill* (0.45): pick-a (`pool_size`) for the conflict region, then continued past it with surrounding context (`self.stride = tuple(stride)`, `self.ignore_border = ignore_border`) and a fabricated `@property def output_shape(self):` body with malformed return divisions (`return ... // self.stride[0]`, `// self.stride[1]`).
+- *v1-sys* (0.43): same pick-a, same fabricated body shape, but with different broken syntax — uses `return tuple(slice(s, s + p - 1) for s, p in zip(input_shape, self.pool_size)))` (note the extra closing paren) inside an `if self.ignore_border / else` block.
+- *v2-sys* (0.62): same pick-a, but stops at `input_shape = self.input_shape`. The fabricated body's content is gone.
 
-The pick-side decision (b, wrong) is identical in all three conditions. v2's gain is purely from cutting off the fabrication.
+The pick-side decision (a, **correct** — matches GT) is identical in all three conditions. v2's gain is purely from cutting off the fabricated `output_shape` body. The Qwen3 analysis (`analysis_qwen3_v1_v2.md`) describes the model that actually picks `poolsize` (wrong) on this case.
 
 **`0x96d20e6c` — new v2 win (+0.134 over v1)**
 
@@ -88,7 +90,7 @@ This is consistent with the v2 design intent (length cap + "no prose, code only"
 Two things follow for Chapter 6 / 7:
 
 1. **The "Apertus benefits, Qwen3 doesn't" framing is misleading.** Both models benefit from the same mechanism; only the opportunity differs. The right framing for RQ1 ("does SKILL.md improve resolution quality?") is "yes, by suppressing the model's over-generation tendency, with magnitude proportional to the model's baseline over-generation rate." Apertus shows a larger net effect because it over-generates more, not because v2 is more skilful for it.
-2. **RQ3 ("does small model + skill close the gap to large model without skill?") needs reformulation.** What the skill closes is the *over-generation gap*, not the resolution-quality gap. The pick-side decisions on `0x96d20e6c` and `0xe4ff79aa` were wrong in all conditions; v2 just made the surrounding noise quieter.
+2. **RQ3 ("does small model + skill close the gap to large model without skill?") needs reformulation.** What the skill closes is the *over-generation gap*, not the resolution-quality gap. The pick-side decision on `0x96d20e6c` was wrong in all conditions; v2 just made the surrounding noise quieter. (`0xe4ff79aa` was incorrectly grouped here in the original analysis — Apertus picks `pool_size` correctly there; see §`0xe4ff79aa` correction note.)
 
 ---
 
@@ -229,7 +231,7 @@ For the thesis: claiming v2 is "purely" a harm-reduction skill would understate 
 
 The earlier #40 v2.1 recommendations (1–6) all hold. Sub-q 2 adds one consideration:
 
-7. **Investigate why pattern-teaching fires unevenly.** v2's pick criterion ("consistency with surrounding code") worked on `0xe63ff0dd` Apertus but didn't fire on the structurally similar `0xe4ff79aa` Apertus (where the model also picked the wrong side, `poolsize` instead of `pool_size`, and v2 didn't correct it). The difference between the two cases is worth understanding — both involve identifier-divergence-with-surrounding-context-tiebreaker, but only one was decided correctly. A worked example covering both shapes (per #40 recommendation 3) might surface what's missing.
+7. **Investigate why pattern-teaching fires unevenly across models.** v2's pick criterion ("consistency with surrounding code") worked on `0xe63ff0dd` Apertus but didn't fire on the structurally similar `0xe4ff79aa` Qwen3 (where Qwen3 picks the wrong side, `poolsize` instead of `pool_size`, in all conditions). On Apertus, this case is *not* a pick-criterion failure: Apertus picks `pool_size` correctly in all conditions, so v2's win there is purely harm-reduction. The cross-model split (Apertus succeeds, Qwen3 fails on the same identifier-divergence case) is itself worth understanding — both involve identifier-divergence-with-surrounding-context-tiebreaker, but the failure side is model-specific. A worked example covering this shape (per #40 recommendation 3) might surface what's missing.
 
 ---
 
@@ -315,21 +317,21 @@ For each Apertus v2-sys win (positive Δedit vs no-skill), classify what pattern
 |---|--:|---|---|---|---|
 | `0xe63ff0dd` | +0.272 | pick-a | pick-a (right side, `K.placeholder`) | **✓ Correct** | Real pattern-teaching (sub-q 2) |
 | `0xa4d50e39` | +0.226 | custom (`n, m = size` unpack) | combine (`init_scope` + `tf_dtype`) | ≈ Best reachable given 8B ceiling | Harm-reduction (replaced hallucinated function) |
-| `0xe4ff79aa` | +0.169 | pick-a (`pool_size`) + custom-extend | pick-b (`poolsize`) | **✗ Wrong side** | Harm-reduction (trimmed broken-syntax fabrication) |
+| `0xe4ff79aa` | +0.169 | pick-a (`pool_size`) + custom-extend | pick-a (`pool_size`) | **✓ Correct (extend missing)** | Harm-reduction (trimmed broken-syntax fabrication) |
 | `0x96d20e6c` | +0.134 | pick-a (`data_format`) + custom-extend | pick-b (`dim_ordering`) | **✗ Wrong side** | Harm-reduction (trimmed preamble + epilogue) |
 | `0x8e6579cb` | +0.007 | pick-a + custom-rename (`vis_utils` → `layer_utils`) | pick-a (reformatted) + over-gen | Partial; custom out of reach | Marginal content alignment |
 | `0xddd5322d` | +0.003 | custom (different body) | combine (`if not None:` + `else:` branch) | **✗ Wrong pattern** | Marginal |
 
 ### Reading
 
-- **1/6** wins are routed correctly at the pattern level (`0xe63ff0dd`).
+- **2/6** wins are routed correctly at the pattern level. One via real pattern-teaching (`0xe63ff0dd`: v2 flipped pick from b to a). One where the pick was already correct in all conditions (`0xe4ff79aa`: pick-a stable across no-skill / v1 / v2; v2's gain is harm-reduction, not pattern-teaching).
 - **1/6** wins reach the best-reachable pattern given the 8B capability ceiling (`0xa4d50e39` — combine is the closest non-custom approximation).
-- **3/6** wins gain through harm-reduction *despite* incorrect pattern routing — v2 either picked the wrong side (`0xe4ff79aa`, `0x96d20e6c`) or applied the wrong pattern (`0xddd5322d`), and the score went up anyway because the over-generation around the resolution was suppressed.
+- **2/6** wins gain through harm-reduction *despite* incorrect pattern routing — v2 picked the wrong side (`0x96d20e6c`) or applied the wrong pattern (`0xddd5322d`), and the score went up anyway because the over-generation around the resolution was suppressed.
 - **1/6** is marginal alignment with no clean pattern story (`0x8e6579cb`).
 
 ### Implication: pattern routing is largely orthogonal to where v2's gains come from
 
-The strongest version of the headroom synthesis from sub-q 1 holds: v2's wins on Apertus are driven by **over-generation suppression, not by correct pattern application**. Even when v2 applies the wrong pattern (`0xe4ff79aa` and `0x96d20e6c` both pick-b, opposite of the correct pick-a), the wins materialise because the metric rewards trimmed fabrication around the resolution more than it rewards correct pick decisions on identifier-divergence cases.
+The strongest version of the headroom synthesis from sub-q 1 holds: v2's wins on Apertus are driven by **over-generation suppression, not by correct pattern application**. Even when v2 applies the wrong pattern (`0x96d20e6c` picks b instead of the correct a; `0xddd5322d` combines vs GT custom), the wins materialise because the metric rewards trimmed fabrication around the resolution more than it rewards correct pick decisions on identifier-divergence cases. The wins where pattern routing *is* correct (`0xe63ff0dd`, `0xe4ff79aa`) draw from the same harm-reduction mechanism — only `0xe63ff0dd` adds a pattern-teaching component on top.
 
 This sharpens the thesis claim further. v2's pattern taxonomy (pick / combine / empty / custom) is not what's doing the work in the measured improvements. What's doing the work is the *output discipline* around the pattern decision — the length cap, the "no prose, code only" rule, the implicit pressure toward conflict-region focus. v2 could in principle route patterns correctly *or* wrongly and still produce most of its measured gains, as long as it suppressed the surrounding fabrication.
 

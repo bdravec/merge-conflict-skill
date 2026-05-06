@@ -277,6 +277,8 @@ For the headroom hypothesis to hold, the top no-skill scorers should already imp
 
 **4/6 are real pattern applications.** Qwen3's no-skill behaviour on these cases is what v2 would prescribe. **2/6 score high despite picking the wrong side**, because the ConGra edit-similarity metric is forgiving when sides have heavy token overlap (`pool_size`/`poolsize`, `get_shape`/`_keras_shape`). v2 doesn't fix these — it produces the same wrong-side output as no-skill — but neither does it hurt them.
 
+**Update (2026-05-06).** The `0xe4ff79aa` case has acquired additional analytical weight after the cross-model verification recorded in `analysis_apertus_v1_v2.md`'s correction note. Apertus picks `pool_size` (correct) on this case in every condition, while Qwen3 picks `poolsize` (wrong) in every condition — the same identifier-divergence task is solved correctly by one 8B model and incorrectly by the other. v2 doesn't shift Qwen3's pick under any of the three conditions (no-skill, v2-sys, v2-user), suggesting either (a) v2's pick criterion as written is insufficient for Qwen3 to apply, or (b) Qwen3 has a model-specific blind spot for this category of identifier-divergence. **This is the target case for the rec 7 diagnostic ablation (issue #44).**
+
 ### Verdict on the headroom hypothesis
 
 **Supported.** Three pieces of evidence converge:

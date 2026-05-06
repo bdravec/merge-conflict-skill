@@ -58,7 +58,7 @@ The post-hoc check at the end of generation is more enforceable than a cap-durin
 
 ### 3. Add a worked pick-with-identifier-divergence example
 
-**Empirical finding.** v2's pick criterion ("which side is more consistent with the surrounding code") is correct in principle but only fired correctly in 1/40 model-cases (`0xe63ff0dd` on Apertus, where v2 picked `K.placeholder` over `tf.placeholder` based on surrounding `K.` prefix style). It did not fire on the structurally similar `0xe4ff79aa` (Apertus picked `poolsize` instead of `pool_size`, surrounding code clearly favours the latter).
+**Empirical finding.** v2's pick criterion ("which side is more consistent with the surrounding code") is correct in principle but only fired correctly in 1/40 model-cases (`0xe63ff0dd` on Apertus, where v2 picked `K.placeholder` over `tf.placeholder` based on surrounding `K.` prefix style). It did not fire on the structurally similar `0xe4ff79aa` (Qwen3 picks `poolsize` instead of `pool_size` despite surrounding underscored-style consistency, and v2 fails to correct the pick; on Apertus, this case is not a pick failure — Apertus picks `pool_size` correctly in every condition without v2's intervention).
 
 **Recommended change.** Add a worked example to §"Edge cases" that shows the Keras-vs-TF API divergence and walks through the pick criterion explicitly. Concretely:
 
@@ -134,9 +134,9 @@ The four-pattern taxonomy can remain as a checklist later in the file, but it sh
 
 ### 7. Investigate why pattern-teaching fires unevenly between structurally similar cases
 
-**Empirical finding.** v2's pick criterion fired correctly on `0xe63ff0dd` Apertus (picked `K.placeholder` over `tf.placeholder` per surrounding `K.` prefix) but not on `0xe4ff79aa` Apertus (picked `poolsize` over `pool_size` despite surrounding underscored-style consistency). Both are identifier-divergence-with-surrounding-context-tiebreaker cases. The mechanism that determines firing direction is not currently characterised.
+**Empirical finding.** v2's pick criterion fired correctly on `0xe63ff0dd` Apertus (picked `K.placeholder` over `tf.placeholder` per surrounding `K.` prefix). On the structurally similar `0xe4ff79aa`, the firing pattern is **model-dependent**: Apertus picks `pool_size` (correct) in every condition without v2's intervention; Qwen3 picks `poolsize` (wrong) in every condition and v2 fails to correct it. Both are identifier-divergence-with-surrounding-context-tiebreaker cases. The mechanism that determines whether v2's pick criterion is needed and whether it activates is model-dependent and not currently characterised.
 
-**Recommended action.** This is a research/diagnostic recommendation, not a SKILL.md edit. Before v2.1 is finalised, run an ablation on `0xe4ff79aa` with explicit pick-criterion prompting (e.g. *"surrounding code uses underscores in identifiers — pick `pool_size`"* added as a hint) to see if the fix is at the prompt level or the model level. If prompt-level, the v2.1 worked example (recommendation 3) should fix it. If model-level, document as a capability ceiling.
+**Recommended action.** This is a research/diagnostic recommendation, not a SKILL.md edit. Before v2.1 is finalised, run an ablation on `0xe4ff79aa` against **Qwen3** (the model that fails this case) with explicit pick-criterion prompting (e.g. *"surrounding code uses underscores in identifiers — pick `pool_size`"* added as a hint) to see if the fix is at the prompt level or the model level. If prompt-level, the v2.1 worked example (recommendation 3) should fix it. If model-level, document as a capability ceiling. Tracked in issue [#44](https://github.com/bdravec/merge-conflict-skill/issues/44).
 
 **Source.** [`analysis_apertus_v1_v2.md`](analysis_apertus_v1_v2.md) sub-q 2.
 
@@ -156,7 +156,7 @@ The four-pattern taxonomy can remain as a checklist later in the file, but it sh
 
 ### 9. Decouple the pattern taxonomy from the output-discipline rules
 
-**Empirical finding.** v2's pattern taxonomy is largely orthogonal to v2's measured gains. 3/6 Apertus v2-sys winners gain through harm-reduction *despite* applying the wrong pattern (`0xe4ff79aa`, `0x96d20e6c` both pick-b vs GT pick-a; `0xddd5322d` combine vs GT custom). The output discipline does the work; the pattern taxonomy is mostly inert.
+**Empirical finding.** v2's pattern taxonomy is largely orthogonal to v2's measured gains. 2/6 Apertus v2-sys winners gain through harm-reduction *despite* applying the wrong pattern (`0x96d20e6c` picks b vs GT pick-a; `0xddd5322d` combine vs GT custom). The output discipline does the work; the pattern taxonomy is mostly inert. (Original analysis listed 3/6 here, with `0xe4ff79aa` grouped as wrong-pick on Apertus; cross-model verification corrected this — Apertus picks `pool_size` correctly on `0xe4ff79aa` in every condition, so v2's win there is harm-reduction with already-correct routing, not despite-wrong routing.)
 
 **Recommended change.** Restructure the SKILL.md document so that:
 1. **§Output discipline** (over-generation guards from recommendation 1) comes first, framed as the primary requirement.
