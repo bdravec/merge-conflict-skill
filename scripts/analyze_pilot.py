@@ -21,7 +21,7 @@ BASELINE = "no-skill"
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, choices=MODELS)
-    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2"],
+    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2", "v2.1"],
                         help="Which skill version's results to analyze (default: v2)")
     args = parser.parse_args()
 

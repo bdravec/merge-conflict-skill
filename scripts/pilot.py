@@ -254,7 +254,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, choices=list(MODELS.keys()),
                         help="Model to evaluate")
-    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2"],
+    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2", "v2.1"],
                         help="Which SKILL.md version to use (default: v2)")
     parser.add_argument("--data-root", default=None,
                         help="Override path to congra_tiny_datasets/<lang>/<type>")
