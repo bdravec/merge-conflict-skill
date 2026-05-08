@@ -1,15 +1,20 @@
 """
-pilot.py — Pilot evaluation for Issues #8 / #37
+pilot.py — ConGra evaluation runner
 
-Runs a small subset of ConGra cases through three conditions:
+Runs ConGra cases through one or more conditions:
   - no-skill:      default ConGra system prompt
-  - skill-v1-sys:  SKILL.md v1 content as system message
-  - skill-v1-user: SKILL.md v1 content prepended to user message
+  - skill-{v}-sys:  SKILL.md v{version} content as system message
+  - skill-{v}-user: SKILL.md v{version} content prepended to user message
+
+When --skill-version=no-skill, only the no-skill condition is run.
 
 Usage:
     source /home/baebs/thesis/vllm-env/bin/activate
-    python scripts/pilot.py --model qwen3
-    python scripts/pilot.py --model apertus
+    # ad-hoc 20-case pilot (default)
+    python scripts/pilot.py --model qwen3 --skill-version v2
+    # full python-tiny baseline (issue #46)
+    python scripts/pilot.py --model qwen3 --skill-version no-skill \\
+        --bucket all --n-cases all --tag baseline_python_tiny --concurrency 8
 """
 
 import argparse
@@ -17,6 +22,7 @@ import os
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from hashlib import sha1
 
 from openai import OpenAI
@@ -128,8 +134,6 @@ VLLM_BASE_URL = "http://localhost:8000/v1"
 TEMPERATURE   = 0.0   # deterministic for reproducibility
 MAX_TOKENS    = 2048
 CONTEXT_LINES = 5     # lines of context around the conflict (ConGra default)
-N_CASES       = 20    # how many cases to sample from meta_list.txt
-LANGUAGE      = "python"
 
 def skill_path_for(version: str) -> str:
     return os.path.join(REPO_ROOT, "skills", f"merge-conflict-resolve-{version}", "SKILL.md")
@@ -167,7 +171,8 @@ def load_skill_md(path: str) -> str:
     return content
 
 
-def load_meta(data_root: str, n: int) -> list[dict]:
+def load_meta(data_root: str, n) -> list[dict]:
+    """n: int (cap) or None (return all)."""
     meta_path = os.path.join(data_root, "meta_list.txt")
     cases = []
     with open(meta_path, "r") as f:
@@ -184,7 +189,7 @@ def load_meta(data_root: str, n: int) -> list[dict]:
                 "hash_idx": hash_idx,
                 "conflict_idx": int(conflict_idx),
             })
-            if len(cases) >= n:
+            if n is not None and len(cases) >= n:
                 break
     return cases
 
@@ -254,102 +259,167 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, choices=list(MODELS.keys()),
                         help="Model to evaluate")
-    parser.add_argument("--skill-version", default="v2", choices=["v1", "v2", "v2.1"],
-                        help="Which SKILL.md version to use (default: v2)")
+    parser.add_argument("--skill-version", default="v2",
+                        choices=["v1", "v2", "v2.1", "no-skill"],
+                        help="SKILL.md version, or 'no-skill' for baseline only")
+    parser.add_argument("--lang", default="python",
+                        help="Language directory under congra_tiny_datasets")
+    parser.add_argument("--bucket", default="func",
+                        help="Conflict bucket (e.g. func, sytx, text) or 'all'")
+    parser.add_argument("--n-cases", default="20",
+                        help="Cases per bucket, or 'all' (default: 20)")
+    parser.add_argument("--tag", default=None,
+                        help="Run tag for results filename. Required when "
+                             "--bucket=all or --n-cases=all.")
+    parser.add_argument("--concurrency", type=int, default=1,
+                        help="Parallel API calls (default: 1)")
     parser.add_argument("--data-root", default=None,
-                        help="Override path to congra_tiny_datasets/<lang>/<type>")
+                        help="Override the dataset root (skips bucket/lang lookup)")
     args = parser.parse_args()
 
     skill_v     = args.skill_version
     cfg         = MODELS[args.model]
     model_id    = cfg["model_id"]
     extra_body  = cfg["extra_body"]
-    skill_path  = skill_path_for(skill_v)
-    results_file = os.path.join(RESULTS_DIR, f"pilot_results_{args.model}_skill-{skill_v}.jsonl")
 
-    data_root = args.data_root or os.path.join(
-        CONGRA_ROOT, "data", "congra_tiny_datasets", "python", "func"
-    )
+    n_cases = None if args.n_cases == "all" else int(args.n_cases)
+    multi_bucket = (args.bucket == "all") and not args.data_root
+
+    if (multi_bucket or n_cases is None) and not args.tag:
+        parser.error("--tag is required when --bucket=all or --n-cases=all")
+
+    # Resolve bucket directories
+    if args.data_root:
+        bucket_dirs = [(args.bucket, args.data_root)]
+    else:
+        lang_root = os.path.join(CONGRA_ROOT, "data", "congra_tiny_datasets", args.lang)
+        if multi_bucket:
+            buckets = sorted(d for d in os.listdir(lang_root)
+                             if os.path.isdir(os.path.join(lang_root, d)))
+            bucket_dirs = [(b, os.path.join(lang_root, b)) for b in buckets]
+        else:
+            bucket_dirs = [(args.bucket, os.path.join(lang_root, args.bucket))]
+
+    # Skill prompt
+    if skill_v == "no-skill":
+        skill_system_prompt = None
+    else:
+        skill_path = skill_path_for(skill_v)
+        print(f"Loading SKILL.md from {skill_path}")
+        skill_system_prompt = load_skill_md(skill_path)
+
+    # Conditions
+    if skill_v == "no-skill":
+        conditions = [("no-skill", CONGRA_SYSTEM_PROMPT, "")]
+    else:
+        conditions = [
+            ("no-skill",                CONGRA_SYSTEM_PROMPT, ""),
+            (f"skill-{skill_v}-sys",    skill_system_prompt,  ""),
+            (f"skill-{skill_v}-user",   CONGRA_SYSTEM_PROMPT, skill_system_prompt),
+        ]
+
+    # Output filename: tag wins over skill-version label when given
+    name_tail = args.tag if args.tag else f"skill-{skill_v}"
+    results_file = os.path.join(RESULTS_DIR, f"pilot_results_{args.model}_{name_tail}.jsonl")
 
     print(f"Model:       {model_id}")
     print(f"Results:     {results_file}")
-    print(f"Data:        {data_root}")
-
-    print(f"\nLoading SKILL.md from {skill_path}")
-    skill_system_prompt = load_skill_md(skill_path)
-
-    print(f"Loading {N_CASES} cases from {data_root}")
-    cases = load_meta(data_root, N_CASES)
-    print(f"  → {len(cases)} cases loaded")
+    print(f"Buckets:     {[b for b, _ in bucket_dirs]}")
+    print(f"N cases:     {'all' if n_cases is None else n_cases}")
+    print(f"Concurrency: {args.concurrency}")
 
     client = OpenAI(api_key="none", base_url=VLLM_BASE_URL)
 
     print("\nRunning prompt-echo sanity check...")
     prompt_echo_check(client, model_id, extra_body)
 
-    # Each condition: (name, system_prompt, user_prefix)
-    # user_prefix is prepended to the user prompt when non-empty (skill-in-user injection)
-    conditions = [
-        ("no-skill",                    CONGRA_SYSTEM_PROMPT, ""),
-        (f"skill-{skill_v}-sys",        skill_system_prompt,  ""),
-        (f"skill-{skill_v}-user",       CONGRA_SYSTEM_PROMPT, skill_system_prompt),
-    ]
+    # Build task list across buckets
+    tasks = []
+    for bucket_name, data_root in bucket_dirs:
+        cases = load_meta(data_root, n_cases)
+        print(f"  bucket={bucket_name}: {len(cases)} cases")
+        for case in cases:
+            tasks.append((bucket_name, data_root, case))
+
+    print(f"\nTotal: {len(tasks)} cases × {len(conditions)} conditions = "
+          f"{len(tasks) * len(conditions)} requests")
+
+    def run_case(task):
+        bucket_name, data_root, case = task
+        source_path = os.path.join(CONGRA_ROOT, "data", "raw_datasets", case["source_path"])
+        hash_file   = os.path.join(data_root, case["hash_idx"])
+        try:
+            conflict_context, conflict_text, ground_truth = load_conflict_and_answer(
+                source_path, hash_file, case["conflict_idx"], CONTEXT_LINES
+            )
+        except Exception as e:
+            return [{"_skip": f"load failed: {e}",
+                     "case_id": case["hash_idx"], "bucket": bucket_name}]
+        user_prompt = CONGRA_USER_TEMPLATE.format(
+            language=args.lang,
+            conflict_context=conflict_context,
+            conflict_text=conflict_text,
+        )
+        records = []
+        for cond_name, sys_prompt, user_prefix in conditions:
+            t0 = time.time()
+            try:
+                raw_response = call_vllm(client, model_id, sys_prompt, user_prompt,
+                                         extra_body, user_prefix)
+                resolution = extract_code_block(raw_response)
+                metrics    = score(resolution, ground_truth)
+                elapsed    = round(time.time() - t0, 2)
+                error      = None
+            except Exception as e:
+                raw_response, resolution = "", ""
+                metrics = {"edit": None, "winnowing": None, "empty": None}
+                elapsed = round(time.time() - t0, 2)
+                error   = str(e)
+            rec = {
+                "case_id":      case["hash_idx"],
+                "conflict_idx": case["conflict_idx"],
+                "condition":    cond_name,
+                "model":        model_id,
+                "resolution":   resolution,
+                "raw_response": raw_response,
+                "ground_truth": ground_truth,
+                "metrics":      metrics,
+                "elapsed_s":    elapsed,
+                "error":        error,
+            }
+            if multi_bucket:
+                rec["bucket"] = bucket_name
+            records.append(rec)
+        return records
+
+    def emit(out, completed, total, task, records):
+        bucket_name, _, case = task
+        header = f"[{completed}/{total}]"
+        if multi_bucket:
+            header += f" {bucket_name}"
+        print(f"{header} {case['hash_idx']} conflict #{case['conflict_idx']}")
+        for rec in records:
+            if "_skip" in rec:
+                print(f"  SKIP — {rec['_skip']}")
+                continue
+            print(f"  condition: {rec['condition']} ... "
+                  f"edit={rec['metrics']['edit']}  "
+                  f"winnowing={rec['metrics']['winnowing']}  ({rec['elapsed_s']}s)")
+            out.write(json.dumps(rec) + "\n")
+        out.flush()
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
+    total = len(tasks)
     with open(results_file, "w", encoding="utf-8") as out:
-        for i, case in enumerate(cases):
-            source_path = os.path.join(CONGRA_ROOT, "data", "raw_datasets", case["source_path"])
-            hash_file   = os.path.join(data_root, case["hash_idx"])
-
-            print(f"\n[{i+1}/{len(cases)}] {case['hash_idx']} conflict #{case['conflict_idx']}")
-
-            try:
-                conflict_context, conflict_text, ground_truth = load_conflict_and_answer(
-                    source_path, hash_file, case["conflict_idx"], CONTEXT_LINES
-                )
-            except Exception as e:
-                print(f"  SKIP — failed to load: {e}")
-                continue
-
-            user_prompt = CONGRA_USER_TEMPLATE.format(
-                language=LANGUAGE,
-                conflict_context=conflict_context,
-                conflict_text=conflict_text,
-            )
-
-            for condition_name, system_prompt, user_prefix in conditions:
-                print(f"  condition: {condition_name} ... ", end="", flush=True)
-                t0 = time.time()
-
-                try:
-                    raw_response = call_vllm(client, model_id, system_prompt, user_prompt, extra_body, user_prefix)
-                    resolution   = extract_code_block(raw_response)
-                    metrics      = score(resolution, ground_truth)
-                    elapsed      = round(time.time() - t0, 2)
-                    error        = None
-                except Exception as e:
-                    raw_response = ""
-                    resolution   = ""
-                    metrics      = {"edit": None, "winnowing": None, "empty": None}
-                    elapsed      = round(time.time() - t0, 2)
-                    error        = str(e)
-
-                print(f"edit={metrics['edit']}  winnowing={metrics['winnowing']}  ({elapsed}s)")
-
-                record = {
-                    "case_id":       case["hash_idx"],
-                    "conflict_idx":  case["conflict_idx"],
-                    "condition":     condition_name,
-                    "model":         model_id,
-                    "resolution":    resolution,
-                    "raw_response":  raw_response,
-                    "ground_truth":  ground_truth,
-                    "metrics":       metrics,
-                    "elapsed_s":     elapsed,
-                    "error":         error,
-                }
-                out.write(json.dumps(record) + "\n")
-                out.flush()
+        if args.concurrency <= 1:
+            for i, task in enumerate(tasks, 1):
+                emit(out, i, total, task, run_case(task))
+        else:
+            with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+                futures = {pool.submit(run_case, t): t for t in tasks}
+                for i, fut in enumerate(as_completed(futures), 1):
+                    task = futures[fut]
+                    emit(out, i, total, task, fut.result())
 
     print(f"\nDone. Results saved to {results_file}")
 
