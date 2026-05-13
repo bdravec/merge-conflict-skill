@@ -221,7 +221,12 @@ def call_vllm(client: OpenAI, model_id: str, system_prompt: str, user_prompt: st
 
 
 def score(resolution: str, ground_truth: str) -> dict:
-    if not resolution.strip():
+    res_empty = not resolution.strip()
+    gt_empty  = not ground_truth.strip()
+    if res_empty and gt_empty:
+        # Empty pattern correctly applied: both sides were deletions.
+        return {"edit": 1.0, "winnowing": 1.0, "empty": False}
+    if res_empty:
         return {"edit": None, "winnowing": None, "empty": True}
     return {
         "edit":      round(metric_edit_distance(resolution, ground_truth), 4),
