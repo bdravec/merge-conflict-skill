@@ -1,30 +1,27 @@
 """
-build_examples_pptx.py — populate conflict_1-6_examples.pptx with 6
-mechanism-revealing cases for the 2026-05-22 review appendix (issue #49).
+build_examples_pptx.py — populate conflict_1-6_examples.pptx for the
+2026-05-22 review appendix (issue #49).
 
-Layout (slide is 10.00 x 5.62 in, 16:9-ish, Uni Bern template):
+Deck (8 slides):
+  1a  Conflict 1 — Apertus      [split, 5-col v1/v2/v2.1 comparison]
+  1b  Conflict 1 — Qwen3        [split]
+  2   Conflict 2                [4-col Apertus/Qwen3 side-by-side]
+  3   Conflict 3                [4-col]
+  4a  Conflict 4 — Apertus      [split]
+  4b  Conflict 4 — Qwen3        [split]
+  5   Conflict 5                [4-col]
+  6   Conflict 6                [4-col]
 
-  ┌─────────────────────────────────────────────────────────────────────────┐
-  │ Conflict N: <tag>                                          [Title, 24pt]│
-  │ <one-line tagline>                                       [tagline, 12pt]│
-  │                                                                          │
-  │  Merge Conflict   Apertus Solution    Qwen3 Solution    Ground Truth    │
-  │  [code box]       [code box]          [code box]        [code box]       │
-  │                   [annotation]        [annotation]                       │
-  │                   [score table]       [score table]                      │
-  │                   [caption]           [caption]                          │
-  │                                                                          │
-  └─────────────────────────────────────────────────────────────────────────┘
+Typography (Barbara 2026-05-14):
+  Title (red):      Arial 28pt — "Conflict N" or "Conflict N — <Model>"
+  Subtitle (black): Arial 28pt — tagline
+  Column labels:    Calibri 9pt bold
+  Code:             Calibri 7pt
+  Annotations:      Calibri 9pt bold (red)
+  Score tables:     Calibri 8pt
+  Captions:         Calibri 10pt
 
-Tables show edit + winnowing under no-skill / v1 / v2 / v2.1 (sys condition).
-
-The 6 cases, their solution-box mode, taglines, annotations, and captions
-are pinned in CASES[] below.
-
-Output: writes /home/baebs/thesis/review_mtgs/conflict_1-6_examples.pptx.
-
-Usage:
-    python scripts/build_examples_pptx.py
+Output: /home/baebs/thesis/review_mtgs/conflict_1-6_examples.pptx
 """
 
 import json
@@ -36,13 +33,14 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.dml.color import RGBColor
 from pptx.oxml.ns import qn
+from lxml import etree
 
 
 REPO_ROOT     = Path(__file__).resolve().parent.parent
 RESULTS_DIR   = REPO_ROOT / "scripts" / "results"
 CONGRA_ROOT   = Path("/home/baebs/thesis/ConGra")
 TEMPLATE_PATH = Path("/home/baebs/thesis/review_mtgs/conflict_1-6_examples.pptx")
-OUT_PATH      = Path("/home/baebs/thesis/review_mtgs/conflict_1-6_examples.pptx")
+OUT_PATH      = TEMPLATE_PATH
 
 PILOTS = {
     ("qwen3",   "v1"):   "pilot_results_qwen3_v2.jsonl",
@@ -53,48 +51,67 @@ PILOTS = {
     ("apertus", "v2.1"): "pilot_results_apertus_skill-v2.1.jsonl",
 }
 
-# Column geometry (inches).
-COL = {
+RED_TITLE = RGBColor(0xD0, 0x21, 0x2C)
+RED_ANNOT = RGBColor(0xB2, 0x18, 0x2B)
+BLACK     = RGBColor(0, 0, 0)
+
+# 4-col layout (Apertus + Qwen3 side-by-side)
+COL_NORMAL = {
     "conflict": {"L": 0.20, "W": 1.80},
     "apertus":  {"L": 2.10, "W": 2.55},
     "qwen3":    {"L": 4.75, "W": 2.55},
     "gt":       {"L": 7.40, "W": 2.40},
 }
-# Row geometry (inches).
+# 5-col layout (one model, v1/v2/v2.1 comparison)
+COL_SPLIT = {
+    "conflict": {"L": 0.20, "W": 1.80},
+    "v1":       {"L": 2.10, "W": 1.85},
+    "v2":       {"L": 4.05, "W": 1.85},
+    "v2.1":     {"L": 6.00, "W": 1.85},
+    "gt":       {"L": 7.95, "W": 1.85},
+}
 ROW = {
-    "title":      {"T": 0.10, "H": 0.40},
-    "tagline":    {"T": 0.55, "H": 0.30},
-    "label":      {"T": 0.92, "H": 0.20},
-    "code":       {"T": 1.15, "H": 2.50},   # ends at 3.65
-    "annotation": {"T": 3.70, "H": 0.25},   # ends at 3.95
-    "table":      {"T": 4.05, "H": 0.70},   # ends at 4.75
-    "caption":    {"T": 4.85, "H": 0.65},   # ends at 5.50
+    "title":      {"T": 0.05, "H": 0.55},
+    "subtitle":   {"T": 0.60, "H": 0.85},
+    "label":      {"T": 1.50, "H": 0.22},
+    "code":       {"T": 1.75, "H": 2.20},   # ends 3.95
+    "annotation": {"T": 4.00, "H": 0.25},
+    "table":      {"T": 4.30, "H": 0.60},   # ends 4.90
+    "caption":    {"T": 4.95, "H": 0.65},   # ends 5.60
 }
 
-# Cases. Each: case_id, conflict_idx, tag, tagline, solution mode, optional
-# per-column annotations (col=apertus|qwen3), captions either (apertus, qwen3)
-# pair or a single full-width string.
+# CASE specs — `split=True` produces 2 slides (one per model).
 CASES = [
     {
         "case_id": "0xe63ff0ddae988357", "conflict_idx": 1,
-        "tag": "pattern-teaching win",
         "tagline": "Apertus changes its pick under v2 — TF API → Keras API",
-        "solution_mode": "stacked",
-        "annotations": {
-            "apertus": "v1 picks tf.placeholder (wrong) — v2/v2.1 pick K.placeholder (correct)",
-            "qwen3":   "",
-        },
-        "caption_apertus": "v1 → v2 routes Apertus from TF API to Keras API — "
-                           "the one clean pattern-routing change in the corpus.",
-        "caption_qwen3":   "Qwen3 already at 0.836 without skill; v1 drops it, "
+        "split": True,
+        "per_model": {
+            "apertus": {
+                "annotations": {
+                    "v1":   "tf.placeholder (wrong)",
+                    "v2":   "K.placeholder (correct)",
+                    "v2.1": "K.placeholder (correct)",
+                },
+                "caption": "v1 → v2 routes Apertus from TF API to Keras API "
+                           "— the one clean pattern-routing change in the corpus.",
+            },
+            "qwen3": {
+                "annotations": {
+                    "v1":   "Drops from 0.836 to 0.437",
+                    "v2":   "Recovers to 0.836",
+                    "v2.1": "Regresses to 0.702",
+                },
+                "caption": "Qwen3 already at 0.836 without skill; v1 drops it, "
                            "v2 recovers, v2.1 regresses. Skill is "
                            "neutral-to-harmful for Qwen3 here.",
+            },
+        },
     },
     {
         "case_id": "0x96d20e6c", "conflict_idx": 1,
-        "tag": "over-generation trimmed",
         "tagline": "v2 suppresses Apertus's over-generation",
-        "solution_mode": "v21",
+        "split": False,
         "annotations": {
             "apertus": "v2 trims Apertus's over-generation",
             "qwen3":   "",
@@ -108,9 +125,8 @@ CASES = [
     },
     {
         "case_id": "0xe4ff79aa", "conflict_idx": 1,
-        "tag": "metric inversion",
         "tagline": "Identifier-divergence (Pick) — metric vs. correctness diverge",
-        "solution_mode": "v21",
+        "split": False,
         "annotations": {
             "apertus": "Picks pool_size correctly",
             "qwen3":   "Picks poolsize (wrong identifier)",
@@ -122,23 +138,33 @@ CASES = [
     },
     {
         "case_id": "0x8e6579cb86af64a8", "conflict_idx": 1,
-        "tag": "v2.1 splits Apertus and Qwen3",
         "tagline": "Same framing — opposite effects across models",
-        "solution_mode": "stacked",
-        "annotations": {
-            "apertus": "+0.21 under v2.1 (climbs from 0.375)",
-            "qwen3":   "−0.21 under v2.1 (falls from 0.672)",
-        },
-        "caption_apertus": "v2.1's stronger output-discipline framing lifts "
+        "split": True,
+        "per_model": {
+            "apertus": {
+                "annotations": {
+                    "v1":   "0.375",
+                    "v2":   "0.375",
+                    "v2.1": "+0.21 → 0.584",
+                },
+                "caption": "v2.1's stronger output-discipline framing lifts "
                            "Apertus from 0.375 (v2) to 0.584 (v2.1).",
-        "caption_qwen3":   "Same framing pushes Qwen3 to a shorter do-nothing "
+            },
+            "qwen3": {
+                "annotations": {
+                    "v1":   "0.466",
+                    "v2":   "0.672",
+                    "v2.1": "−0.21 → 0.466",
+                },
+                "caption": "Same framing pushes Qwen3 to a shorter do-nothing "
                            "output; v2.1 drops Qwen3 from 0.672 back to 0.466.",
+            },
+        },
     },
     {
         "case_id": "0x32d8c89b39c2860b", "conflict_idx": 1,
-        "tag": "byte-identical no-op",
         "tagline": "Apertus emits the same code under all 9 conditions",
-        "solution_mode": "v21",
+        "split": False,
         "annotations": {
             "apertus": "Identical output every time",
             "qwen3":   "Wobbles to 0.512 under v2",
@@ -150,9 +176,8 @@ CASES = [
     },
     {
         "case_id": "0xd9272c5e0e8f15ee", "conflict_idx": 1,
-        "tag": "skill harms Apertus, ignored by Qwen3",
         "tagline": "Task ceiling — and skill actively misleads Apertus",
-        "solution_mode": "v21",
+        "split": False,
         "annotations": {
             "apertus": "Skill loses 0.11 vs no-skill",
             "qwen3":   "Stuck at 0.19 across all versions",
@@ -165,25 +190,21 @@ CASES = [
 ]
 
 
-# ── ConGra data loaders (inlined from pilot.py) ───────────────────────────────
+# ── ConGra loaders ─────────────────────────────────────────────────────────────
 def load_conflict_and_answer(source_path, file_path, k, n=5):
     region_path = source_path.replace("merged_without_base", "regions") + ".region"
     regions = []
-    with open(region_path, "r") as f:
-        for line in f:
-            if "#" in line:
-                continue
-            line = line.strip()
-            if line:
-                regions.append(eval(line))
+    for line in open(region_path):
+        if "#" in line: continue
+        s = line.strip()
+        if s: regions.append(eval(s))
     region = regions[k - 1]
     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         lines = f.read().split("\n")
     start, end = region[0] - 1, region[1]
     conflict_text = "\n".join(lines[start:end])
     resolved_path = source_path.replace("merged_without_base", "resolved").replace(
-        "regions", "resolved"
-    )
+        "regions", "resolved")
     with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
         rlines = f.read().split("\n")
     rstart, rend = region[2] - 1, region[3]
@@ -195,80 +216,65 @@ def build_case_index():
     lang_root = CONGRA_ROOT / "data" / "congra_tiny_datasets" / "python"
     idx = {}
     for bucket_dir in sorted(lang_root.iterdir()):
-        if not bucket_dir.is_dir():
-            continue
+        if not bucket_dir.is_dir(): continue
         meta = bucket_dir / "meta_list.txt"
-        if not meta.is_file():
-            continue
+        if not meta.is_file(): continue
         for line in meta.read_text().splitlines():
             line = line.strip()
-            if not line or line.count(": ") != 2:
-                continue
-            source_path, hash_idx, conflict_idx = line.split(": ")
-            idx[hash_idx] = (bucket_dir.name, source_path, int(conflict_idx))
+            if not line or line.count(": ") != 2: continue
+            sp, h, ci = line.split(": ")
+            idx[h] = (bucket_dir.name, sp, int(ci))
     return idx
 
 
-def normalize_case_id(short_id, index):
-    if short_id in index:
-        return short_id
-    matches = [k for k in index if k.startswith(short_id)]
-    if len(matches) == 1:
-        return matches[0]
-    raise KeyError(f"Cannot resolve case_id {short_id!r}: {len(matches)} matches")
+def normalize_case_id(short, index):
+    if short in index: return short
+    matches = [k for k in index if k.startswith(short)]
+    if len(matches) == 1: return matches[0]
+    raise KeyError(f"Cannot resolve {short!r}")
 
 
 def load_pilots():
     out = {}
     for key, fname in PILOTS.items():
-        path = RESULTS_DIR / fname
         by_case = defaultdict(dict)
-        for line in open(path):
+        for line in open(RESULTS_DIR / fname):
             r = json.loads(line)
             by_case[(r["case_id"], r["conflict_idx"])][r["condition"]] = r
         out[key] = by_case
     return out
 
 
-def fmt_score(x):
-    return "—" if x is None else f"{x:.3f}"
+def fmt_score(x): return "—" if x is None else f"{x:.3f}"
 
 
 def score_for(pilots, model, version, case_key):
-    """Returns (edit, winnowing) for skill-vX-sys, or no-skill if version='no-skill'."""
     cond = "no-skill" if version == "no-skill" else f"skill-{version}-sys"
-    # no-skill is identical across the 3 pilots; pick from v2.
     pilot_key = "v2" if version == "no-skill" else version
     rec = pilots[(model, pilot_key)].get(case_key, {}).get(cond)
-    if not rec or rec.get("error"):
-        return None, None
+    if not rec or rec.get("error"): return None, None
     m = rec.get("metrics", {})
     return m.get("edit"), m.get("winnowing")
 
 
-def render_solution(pilots, model, case_key, mode):
-    versions = ("v1", "v2", "v2.1")
-    by_version = {}
-    for v in versions:
-        rec = pilots[(model, v)].get(case_key, {}).get(f"skill-{v}-sys")
-        if rec and not rec.get("error"):
-            by_version[v] = rec.get("resolution", "") or ""
-        else:
-            by_version[v] = ""
-    if mode == "stacked":
-        parts = []
-        for v in versions:
-            txt = by_version[v].strip() or "(empty)"
-            parts.append(f"[{v}]\n{txt}")
-        return "\n\n".join(parts)
-    return by_version["v2.1"].strip() or "(empty)"
+def get_solution(pilots, model, version, case_key):
+    rec = pilots[(model, version)].get(case_key, {}).get(f"skill-{version}-sys")
+    return (rec.get("resolution") or "") if rec and not rec.get("error") else ""
 
 
-# ── Shape primitives ──────────────────────────────────────────────────────────
-def add_textbox(slide, L, T, W, H, text, *,
-                font_pt=10, bold=False, align=None, anchor=MSO_ANCHOR.TOP,
-                color=None, font_name=None):
-    """Add a textbox with a single paragraph styled uniformly."""
+# ── Rich textbox + run-level highlight ────────────────────────────────────────
+def set_run_highlight(run, hex_color):
+    rPr = run._r.get_or_add_rPr()
+    for el in rPr.findall(qn("a:highlight")):
+        rPr.remove(el)
+    hl = etree.SubElement(rPr, qn("a:highlight"))
+    srgb = etree.SubElement(hl, qn("a:srgbClr"))
+    srgb.set("val", hex_color)
+
+
+def add_textbox_rich(slide, L, T, W, H, paragraphs, *,
+                     font_name="Calibri", default_pt=10,
+                     align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP):
     box = slide.shapes.add_textbox(Inches(L), Inches(T), Inches(W), Inches(H))
     tf = box.text_frame
     tf.word_wrap = True
@@ -277,72 +283,69 @@ def add_textbox(slide, L, T, W, H, text, *,
     tf.margin_right  = Inches(0.05)
     tf.margin_top    = Inches(0.02)
     tf.margin_bottom = Inches(0.02)
-    # Use the first paragraph that text_frame.text creates, but support
-    # multi-line content by splitting on \n.
-    lines = text.split("\n") if text else [""]
-    p = tf.paragraphs[0]
-    p.text = lines[0]
-    for extra in lines[1:]:
-        new_p = tf.add_paragraph()
-        new_p.text = extra
-    for para in tf.paragraphs:
-        if align is not None:
-            para.alignment = align
-        for run in para.runs:
-            run.font.size = Pt(font_pt)
-            run.font.bold = bold
-            if font_name:
-                run.font.name = font_name
+    first = True
+    for paragraph in paragraphs:
+        if first:
+            p = tf.paragraphs[0]; first = False
+        else:
+            p = tf.add_paragraph()
+        p.alignment = align
+        for r_spec in paragraph:
+            run = p.add_run()
+            run.text = r_spec.get("text", "")
+            run.font.name = r_spec.get("font_name", font_name)
+            run.font.size = Pt(r_spec.get("font_pt", default_pt))
+            if r_spec.get("bold"):   run.font.bold = True
+            if r_spec.get("italic"): run.font.italic = True
+            color = r_spec.get("color")
             if color is not None:
                 run.font.color.rgb = color
+            hl = r_spec.get("highlight")
+            if hl:
+                set_run_highlight(run, hl)
     return box
 
 
-def add_score_table(slide, L, T, W, H, model_label, scores):
-    """5 cols x 3 rows. scores = dict edit/win across {no-skill,v1,v2,v2.1}."""
-    cols, rows = 5, 3
-    tbl_shape = slide.shapes.add_table(rows, cols, Inches(L), Inches(T), Inches(W), Inches(H))
-    tbl = tbl_shape.table
+def lines_to_paragraphs(text, **run_attrs):
+    if not text:
+        return [[{"text": "", **run_attrs}]]
+    return [[{"text": line, **run_attrs}] for line in text.split("\n")]
 
-    # Header row
-    headers = [model_label, "no-skill", "v1", "v2", "v2.1"]
+
+# ── Score table ───────────────────────────────────────────────────────────────
+def add_score_table(slide, L, T, W, H, scores):
+    cols, rows = 5, 3
+    shape = slide.shapes.add_table(rows, cols, Inches(L), Inches(T),
+                                   Inches(W), Inches(H))
+    tbl = shape.table
+    headers = ["Scores", "no-skill", "v1", "v2", "v2.1"]
+    data = [
+        ["Edit Similarity", *[fmt_score(scores[v][0]) for v in ("no-skill","v1","v2","v2.1")]],
+        ["Winnowing",       *[fmt_score(scores[v][1]) for v in ("no-skill","v1","v2","v2.1")]],
+    ]
     for c, h in enumerate(headers):
         cell = tbl.cell(0, c)
         cell.text = h
         for para in cell.text_frame.paragraphs:
             para.alignment = PP_ALIGN.CENTER
             for run in para.runs:
-                run.font.size = Pt(9)
+                run.font.name = "Calibri"
+                run.font.size = Pt(8)
                 run.font.bold = True
-
-    # Edit Similarity row
-    tbl.cell(1, 0).text = "Edit Similarity"
-    tbl.cell(1, 1).text = fmt_score(scores["no-skill"][0])
-    tbl.cell(1, 2).text = fmt_score(scores["v1"][0])
-    tbl.cell(1, 3).text = fmt_score(scores["v2"][0])
-    tbl.cell(1, 4).text = fmt_score(scores["v2.1"][0])
-
-    # Winnowing row
-    tbl.cell(2, 0).text = "Winnowing"
-    tbl.cell(2, 1).text = fmt_score(scores["no-skill"][1])
-    tbl.cell(2, 2).text = fmt_score(scores["v1"][1])
-    tbl.cell(2, 3).text = fmt_score(scores["v2"][1])
-    tbl.cell(2, 4).text = fmt_score(scores["v2.1"][1])
-
-    # Uniform font for data rows
-    for r_idx in (1, 2):
-        for c_idx in range(cols):
+    for r_idx, row in enumerate(data, start=1):
+        for c_idx, v in enumerate(row):
             cell = tbl.cell(r_idx, c_idx)
+            cell.text = v
             for para in cell.text_frame.paragraphs:
-                para.alignment = PP_ALIGN.CENTER if c_idx > 0 else PP_ALIGN.LEFT
+                para.alignment = PP_ALIGN.LEFT if c_idx == 0 else PP_ALIGN.CENTER
                 for run in para.runs:
-                    run.font.size = Pt(9)
-    return tbl_shape
+                    run.font.name = "Calibri"
+                    run.font.size = Pt(8)
+    return shape
 
 
-# ── Slide clearing ────────────────────────────────────────────────────────────
+# ── Slide cleanup ─────────────────────────────────────────────────────────────
 def clear_all_slides(prs):
-    """Remove every slide so we can rebuild from scratch."""
     sldIdLst = prs.slides._sldIdLst
     pres_part = prs.part
     for sld_id in list(sldIdLst):
@@ -359,101 +362,147 @@ def find_layout_by_name(prs, name):
     raise KeyError(f"Layout {name!r} not found.")
 
 
-def remove_layout_placeholders(slide):
-    """Strip layout-derived placeholder shapes from a freshly added slide."""
+def remove_placeholders(slide):
     for shape in list(slide.placeholders):
         sp = shape._element
         sp.getparent().remove(sp)
 
 
-def build_slide(prs, layout, idx, case, pilots):
-    slide = prs.slides.add_slide(layout)
-    remove_layout_placeholders(slide)
+def add_title_and_subtitle(slide, title_text, subtitle_text):
+    add_textbox_rich(
+        slide, 0.20, ROW["title"]["T"], 9.60, ROW["title"]["H"],
+        [[{"text": title_text, "font_name": "Arial", "font_pt": 28,
+           "bold": True, "color": RED_TITLE}]],
+    )
+    add_textbox_rich(
+        slide, 0.20, ROW["subtitle"]["T"], 9.60, ROW["subtitle"]["H"],
+        [[{"text": subtitle_text, "font_name": "Arial", "font_pt": 28,
+           "color": BLACK}]],
+    )
 
+
+def add_label(slide, L, W, text):
+    add_textbox_rich(
+        slide, L, ROW["label"]["T"], W, ROW["label"]["H"],
+        [[{"text": text, "font_pt": 9, "bold": True}]],
+    )
+
+
+def add_code(slide, L, W, text):
+    code_attrs = {"font_name": "Calibri", "font_pt": 7}
+    add_textbox_rich(
+        slide, L, ROW["code"]["T"], W, ROW["code"]["H"],
+        lines_to_paragraphs(text, **code_attrs),
+        default_pt=7,
+    )
+
+
+def add_annotation(slide, L, W, text):
+    add_textbox_rich(
+        slide, L, ROW["annotation"]["T"], W, ROW["annotation"]["H"],
+        [[{"text": text, "font_pt": 9, "bold": True, "color": RED_ANNOT}]],
+        align=PP_ALIGN.CENTER,
+    )
+
+
+def add_caption(slide, L, W, text):
+    add_textbox_rich(
+        slide, L, ROW["caption"]["T"], W, ROW["caption"]["H"],
+        [[{"text": text, "font_pt": 10}]],
+    )
+
+
+# ── Slide builders ────────────────────────────────────────────────────────────
+def build_normal_slide(prs, layout, idx, case, pilots):
+    """4-col layout: Conflict | Apertus | Qwen3 | GT."""
+    slide = prs.slides.add_slide(layout)
+    remove_placeholders(slide)
     case_key = (case["case_id"], case["conflict_idx"])
 
-    # Title chip
-    add_textbox(
-        slide, 0.20, ROW["title"]["T"], 9.60, ROW["title"]["H"],
-        f"Conflict {idx}: {case['tag']}",
-        font_pt=24, bold=True,
-    )
+    add_title_and_subtitle(slide, f"Conflict {idx}", case["tagline"])
 
-    # Tagline
-    add_textbox(
-        slide, 0.20, ROW["tagline"]["T"], 9.60, ROW["tagline"]["H"],
-        case["tagline"],
-        font_pt=12,
-    )
-
-    # Column labels
     for key, label in [("conflict", "Merge Conflict"),
                        ("apertus",  "Apertus Solution"),
                        ("qwen3",    "Qwen3 Solution"),
                        ("gt",       "Ground Truth")]:
-        add_textbox(
-            slide, COL[key]["L"], ROW["label"]["T"], COL[key]["W"], ROW["label"]["H"],
-            label,
-            font_pt=8, bold=True,
-        )
+        add_label(slide, COL_NORMAL[key]["L"], COL_NORMAL[key]["W"], label)
 
-    # Code boxes
-    apertus_text = render_solution(pilots, "apertus", case_key, case["solution_mode"])
-    qwen3_text   = render_solution(pilots, "qwen3",   case_key, case["solution_mode"])
-    for key, content in [("conflict", case["conflict_text"]),
-                         ("apertus",  apertus_text),
-                         ("qwen3",    qwen3_text),
-                         ("gt",       case["ground_truth"])]:
-        add_textbox(
-            slide, COL[key]["L"], ROW["code"]["T"], COL[key]["W"], ROW["code"]["H"],
-            content,
-            font_pt=7, font_name="Consolas",
-        )
+    add_code(slide, COL_NORMAL["conflict"]["L"], COL_NORMAL["conflict"]["W"],
+             case["conflict_text"])
+    add_code(slide, COL_NORMAL["apertus"]["L"], COL_NORMAL["apertus"]["W"],
+             get_solution(pilots, "apertus", "v2.1", case_key) or "(empty)")
+    add_code(slide, COL_NORMAL["qwen3"]["L"], COL_NORMAL["qwen3"]["W"],
+             get_solution(pilots, "qwen3", "v2.1", case_key) or "(empty)")
+    add_code(slide, COL_NORMAL["gt"]["L"], COL_NORMAL["gt"]["W"],
+             case["ground_truth"])
 
-    # Annotations (between code and table) — apertus + qwen3 columns
     for key in ("apertus", "qwen3"):
         ann = (case.get("annotations") or {}).get(key, "")
         if ann:
-            add_textbox(
-                slide, COL[key]["L"], ROW["annotation"]["T"], COL[key]["W"], ROW["annotation"]["H"],
-                ann,
-                font_pt=9, bold=True, align=PP_ALIGN.CENTER, color=RGBColor(0xB2, 0x18, 0x2B),
-            )
+            add_annotation(slide, COL_NORMAL[key]["L"],
+                           COL_NORMAL[key]["W"], ann)
 
-    # Score tables (5 cols × 3 rows: header + edit + winnowing)
     a_scores = {v: score_for(pilots, "apertus", v, case_key)
                 for v in ("no-skill", "v1", "v2", "v2.1")}
     q_scores = {v: score_for(pilots, "qwen3", v, case_key)
                 for v in ("no-skill", "v1", "v2", "v2.1")}
-    add_score_table(slide, COL["apertus"]["L"], ROW["table"]["T"],
-                    COL["apertus"]["W"], ROW["table"]["H"],
-                    "Scores", a_scores)
-    add_score_table(slide, COL["qwen3"]["L"], ROW["table"]["T"],
-                    COL["qwen3"]["W"], ROW["table"]["H"],
-                    "Scores", q_scores)
+    add_score_table(slide, COL_NORMAL["apertus"]["L"], ROW["table"]["T"],
+                    COL_NORMAL["apertus"]["W"], ROW["table"]["H"], a_scores)
+    add_score_table(slide, COL_NORMAL["qwen3"]["L"], ROW["table"]["T"],
+                    COL_NORMAL["qwen3"]["W"], ROW["table"]["H"], q_scores)
 
-    # Captions
     if "caption_full" in case:
-        add_textbox(
-            slide, 0.20, ROW["caption"]["T"], 9.60, ROW["caption"]["H"],
-            case["caption_full"],
-            font_pt=10,
-        )
+        add_caption(slide, 0.20, 9.60, case["caption_full"])
     else:
-        add_textbox(
-            slide, COL["apertus"]["L"], ROW["caption"]["T"],
-            COL["apertus"]["W"], ROW["caption"]["H"],
-            case.get("caption_apertus", ""),
-            font_pt=10,
-        )
-        add_textbox(
-            slide, COL["qwen3"]["L"], ROW["caption"]["T"],
-            COL["qwen3"]["W"], ROW["caption"]["H"],
-            case.get("caption_qwen3", ""),
-            font_pt=10,
-        )
+        add_caption(slide, COL_NORMAL["apertus"]["L"], COL_NORMAL["apertus"]["W"],
+                    case.get("caption_apertus", ""))
+        add_caption(slide, COL_NORMAL["qwen3"]["L"], COL_NORMAL["qwen3"]["W"],
+                    case.get("caption_qwen3", ""))
 
-    return slide
+
+def build_split_slide(prs, layout, idx, case, pilots, model):
+    """5-col layout: Conflict | v1 | v2 | v2.1 | GT, for one model."""
+    slide = prs.slides.add_slide(layout)
+    remove_placeholders(slide)
+    case_key = (case["case_id"], case["conflict_idx"])
+    model_label = "Apertus" if model == "apertus" else "Qwen3"
+    pm = case["per_model"][model]
+
+    add_title_and_subtitle(slide, f"Conflict {idx} — {model_label}", case["tagline"])
+
+    add_label(slide, COL_SPLIT["conflict"]["L"], COL_SPLIT["conflict"]["W"],
+              "Merge Conflict")
+    add_label(slide, COL_SPLIT["v1"]["L"], COL_SPLIT["v1"]["W"],
+              f"{model_label} — v1")
+    add_label(slide, COL_SPLIT["v2"]["L"], COL_SPLIT["v2"]["W"],
+              f"{model_label} — v2")
+    add_label(slide, COL_SPLIT["v2.1"]["L"], COL_SPLIT["v2.1"]["W"],
+              f"{model_label} — v2.1")
+    add_label(slide, COL_SPLIT["gt"]["L"], COL_SPLIT["gt"]["W"],
+              "Ground Truth")
+
+    add_code(slide, COL_SPLIT["conflict"]["L"], COL_SPLIT["conflict"]["W"],
+             case["conflict_text"])
+    for v in ("v1", "v2", "v2.1"):
+        text = get_solution(pilots, model, v, case_key) or "(empty)"
+        add_code(slide, COL_SPLIT[v]["L"], COL_SPLIT[v]["W"], text)
+    add_code(slide, COL_SPLIT["gt"]["L"], COL_SPLIT["gt"]["W"],
+             case["ground_truth"])
+
+    for v in ("v1", "v2", "v2.1"):
+        ann = pm.get("annotations", {}).get(v, "")
+        if ann:
+            add_annotation(slide, COL_SPLIT[v]["L"], COL_SPLIT[v]["W"], ann)
+
+    # One score table for this model, spanning v1..v2.1 columns
+    scores = {v: score_for(pilots, model, v, case_key)
+              for v in ("no-skill", "v1", "v2", "v2.1")}
+    table_L = COL_SPLIT["v1"]["L"]
+    table_W = (COL_SPLIT["v2.1"]["L"] + COL_SPLIT["v2.1"]["W"]) - COL_SPLIT["v1"]["L"]
+    add_score_table(slide, table_L, ROW["table"]["T"],
+                    table_W, ROW["table"]["H"], scores)
+
+    add_caption(slide, 0.20, 9.60, pm.get("caption", ""))
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -471,31 +520,38 @@ def main():
         cid = normalize_case_id(spec["case_id"], case_idx)
         bucket, src_rel, _ = case_idx[cid]
         source_path = str(CONGRA_ROOT / "data" / "raw_datasets" / src_rel)
-        hash_file   = str(CONGRA_ROOT / "data" / "congra_tiny_datasets"
-                          / "python" / bucket / cid)
+        hash_file = str(CONGRA_ROOT / "data" / "congra_tiny_datasets"
+                        / "python" / bucket / cid)
         conflict_text, gt = load_conflict_and_answer(
-            source_path, hash_file, spec["conflict_idx"], n=5,
-        )
+            source_path, hash_file, spec["conflict_idx"], n=5)
         resolved.append({**spec, "case_id": cid, "bucket": bucket,
                          "conflict_text": conflict_text, "ground_truth": gt})
         print(f"  {cid[:18]}... bucket={bucket:>16} "
               f"conflict={len(conflict_text.splitlines())}L "
               f"GT={len(gt.splitlines())}L")
 
-    print(f"\nOpening template: {TEMPLATE_PATH}")
     prs = Presentation(str(TEMPLATE_PATH))
-
     print("Clearing existing slides...")
     clear_all_slides(prs)
 
     layout = find_layout_by_name(prs, "3: Titel-Folie ohne Bild")
     print(f"Using layout: {layout.name}")
 
+    n_slides = 0
     for i, case in enumerate(resolved, start=1):
-        build_slide(prs, layout, i, case, pilots)
-        print(f"  slide {i}: {case['case_id'][:14]}... '{case['tag']}' built")
+        if case.get("split"):
+            build_split_slide(prs, layout, i, case, pilots, "apertus")
+            n_slides += 1
+            print(f"  slide {n_slides}: Conflict {i} — Apertus built")
+            build_split_slide(prs, layout, i, case, pilots, "qwen3")
+            n_slides += 1
+            print(f"  slide {n_slides}: Conflict {i} — Qwen3 built")
+        else:
+            build_normal_slide(prs, layout, i, case, pilots)
+            n_slides += 1
+            print(f"  slide {n_slides}: Conflict {i} built")
 
-    print(f"\nSaving: {OUT_PATH}")
+    print(f"\nSaving: {OUT_PATH} ({n_slides} slides)")
     prs.save(str(OUT_PATH))
     print("Done.")
 
