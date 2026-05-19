@@ -235,6 +235,53 @@ def score(resolution: str, ground_truth: str) -> dict:
     }
 
 
+def prefilter_by_token_length(tasks, conditions, model_id, lang, cap):
+    """
+    Pre-tokenize every (task × condition) prompt; return (safe_tasks, skipped).
+    A task is skipped if max(token count across conditions) > cap.
+    `skipped` is a list of dicts with bucket/case_id/conflict_idx/max_tokens/reason.
+    """
+    from transformers import AutoTokenizer
+    print(f"Pre-filter: loading tokenizer for {model_id}...")
+    tok = AutoTokenizer.from_pretrained(model_id)
+    safe, skipped = [], []
+    for bucket_name, data_root, case in tasks:
+        source_path = os.path.join(CONGRA_ROOT, "data", "raw_datasets", case["source_path"])
+        hash_file   = os.path.join(data_root, case["hash_idx"])
+        try:
+            conflict_context, conflict_text, _gt = load_conflict_and_answer(
+                source_path, hash_file, case["conflict_idx"], CONTEXT_LINES
+            )
+        except Exception:
+            # Can't tokenize — let it through; run_case will record the load failure.
+            safe.append((bucket_name, data_root, case))
+            continue
+        user_prompt = CONGRA_USER_TEMPLATE.format(
+            language=lang, conflict_context=conflict_context, conflict_text=conflict_text,
+        )
+        max_n = 0
+        for _cond, sys_prompt, user_prefix in conditions:
+            full_user = f"{user_prefix}\n\n{user_prompt}" if user_prefix else user_prompt
+            msgs = [
+                {"role": "system", "content": sys_prompt},
+                {"role": "user",   "content": full_user},
+            ]
+            ids = tok.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True)
+            if len(ids) > max_n:
+                max_n = len(ids)
+        if max_n > cap:
+            skipped.append({
+                "bucket":       bucket_name,
+                "case_id":      case["hash_idx"],
+                "conflict_idx": case["conflict_idx"],
+                "max_tokens":   max_n,
+                "reason":       f"max condition tokens {max_n} > cap {cap}",
+            })
+        else:
+            safe.append((bucket_name, data_root, case))
+    return safe, skipped
+
+
 def prompt_echo_check(client: OpenAI, model_id: str, extra_body: dict) -> bool:
     """
     Sanity check: send a trivial request with a distinctive system prompt and
@@ -280,6 +327,11 @@ def main():
                         help="Parallel API calls (default: 1)")
     parser.add_argument("--data-root", default=None,
                         help="Override the dataset root (skips bucket/lang lookup)")
+    parser.add_argument("--max-prompt-tokens", type=int, default=None,
+                        help="If set, pre-tokenize all tasks and skip those "
+                             "whose longest condition prompt exceeds this many "
+                             "tokens. Skipped cases logged to "
+                             "<results>.skipped.csv. Default: disabled.")
     args = parser.parse_args()
 
     skill_v     = args.skill_version
@@ -345,6 +397,21 @@ def main():
         print(f"  bucket={bucket_name}: {len(cases)} cases")
         for case in cases:
             tasks.append((bucket_name, data_root, case))
+
+    if args.max_prompt_tokens is not None:
+        safe, skipped = prefilter_by_token_length(
+            tasks, conditions, model_id, args.lang, args.max_prompt_tokens,
+        )
+        skipped_file = results_file.replace(".jsonl", ".skipped.csv")
+        if skipped:
+            with open(skipped_file, "w") as f:
+                f.write("bucket,case_id,conflict_idx,max_tokens,reason\n")
+                for s in skipped:
+                    f.write(f"{s['bucket']},{s['case_id']},{s['conflict_idx']},"
+                            f"{s['max_tokens']},\"{s['reason']}\"\n")
+        print(f"Pre-filter: skipped {len(skipped)}/{len(tasks)} tasks"
+              + (f" → {skipped_file}" if skipped else ""))
+        tasks = safe
 
     print(f"\nTotal: {len(tasks)} cases × {len(conditions)} conditions = "
           f"{len(tasks) * len(conditions)} requests")
