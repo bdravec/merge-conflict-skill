@@ -1,0 +1,3 @@
+bucket,case_id,conflict_idx,max_tokens,reason
+text+func,0x3c6bfea82e909fff,1,36591,"max condition tokens 36591 > cap 30720"
+text+func,0x36fc912664c75dda,1,32735,"max condition tokens 32735 > cap 30720"
