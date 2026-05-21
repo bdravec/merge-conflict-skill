@@ -51,9 +51,12 @@ BACKUP = RESULTS / "pilot_results_apertus_v1_python_tiny_raw_2026-05-18.jsonl"
 
 def load_source(path: Path, allowed: set[str]) -> list[dict]:
     rows = []
+    assign_bucket = next(iter(allowed)) if len(allowed) == 1 else None
     with path.open() as f:
         for line in f:
             r = json.loads(line)
+            if assign_bucket is not None and "bucket" not in r:
+                r["bucket"] = assign_bucket
             if r.get("bucket") in allowed:
                 rows.append(r)
     return rows
