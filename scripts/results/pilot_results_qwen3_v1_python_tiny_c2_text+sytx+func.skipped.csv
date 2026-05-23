@@ -1,0 +1,10 @@
+bucket,case_id,conflict_idx,max_tokens,reason
+text+sytx+func,0x917b900e7db2a59,1,77439,"max condition tokens 77439 > cap 30720"
+text+sytx+func,0xd52686f97fc9b4f2,1,76688,"max condition tokens 76688 > cap 30720"
+text+sytx+func,0xb1174f292bb18770,1,54494,"max condition tokens 54494 > cap 30720"
+text+sytx+func,0x3487a78b9d623479,1,113728,"max condition tokens 113728 > cap 30720"
+text+sytx+func,0x645843f49857704f,1,31874,"max condition tokens 31874 > cap 30720"
+text+sytx+func,0xa2f011c1f02c3354,1,31186,"max condition tokens 31186 > cap 30720"
+text+sytx+func,0x7544db81b2fc1ae4,1,81225,"max condition tokens 81225 > cap 30720"
+text+sytx+func,0x6bd5e3880d5a3d8f,1,94721,"max condition tokens 94721 > cap 30720"
+text+sytx+func,0xf23323cac506ee3a,1,81225,"max condition tokens 81225 > cap 30720"
