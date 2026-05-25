@@ -150,7 +150,8 @@ def plot_split(key: str, title_metric: str, out_path: str):
         Patch(facecolor=PILOTS[0][2], alpha=0.7, label=f"{PILOTS[0][0]} (left half)"),
         Patch(facecolor=PILOTS[1][2], alpha=0.7, label=f"{PILOTS[1][0]} (right half)"),
     ]
-    ax.legend(handles=legend_handles, loc="upper right", fontsize=9, frameon=False)
+    ax.legend(handles=legend_handles, loc="upper left",
+              bbox_to_anchor=(1.005, 1.0), fontsize=9, frameon=False)
 
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
