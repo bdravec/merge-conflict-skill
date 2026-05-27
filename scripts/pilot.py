@@ -36,8 +36,16 @@ MODELS = {
         # Disable chain-of-thought thinking mode for cleaner output
         "extra_body":  {"chat_template_kwargs": {"enable_thinking": False}},
     },
+    "qwen3-32b": {
+        "model_id":    "Qwen/Qwen3-32B",
+        "extra_body":  {"chat_template_kwargs": {"enable_thinking": False}},
+    },
     "apertus": {
         "model_id":    "swiss-ai/Apertus-8B-Instruct-2509",
+        "extra_body":  {},
+    },
+    "apertus-70b": {
+        "model_id":    "swiss-ai/Apertus-70B-Instruct-2509",
         "extra_body":  {},
     },
 }
