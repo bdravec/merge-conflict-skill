@@ -131,11 +131,43 @@ Pinned versions match local box, so pilot.py / ConGra metrics behave identically
 
 *Pending — to be added once first job runs successfully.*
 
-## 6. Recipes: serving Apertus-70B / Qwen3-32B
+## 7. Recipes: serving Qwen3-32B (interactive smoke test)
 
-*Pending — to be added after smoke test.*
+First interactive serve, drafted 2026-05-28 for the #72 smoke test. Assumes you've already landed an `srun --partition=gpu-invest --gres=gpu:h100:1 --time=02:00:00 --pty bash` allocation inside tmux `vllm-wait`, and the prompt is now `gnodeXX`.
 
-## 7. Gotchas
+You need **two panes** in the tmux session — vLLM serve holds the foreground in one, pilot.py runs in the other. From inside `vllm-wait`: `Ctrl-b "` to split, `Ctrl-b ↑/↓` to switch.
+
+**Pane A — vLLM serve:**
+```bash
+cd ~/thesis
+module load CUDA/12.6.0 cuDNN/9.5.0.50-CUDA-12.6.0 Python/3.11.3-GCCcore-12.3.0
+source vllm-env/bin/activate
+export HF_HUB_OFFLINE=1
+vllm serve Qwen/Qwen3-32B --port 8000 --max-model-len 32768 2>&1 | tee ~/vllm_qwen3_32b.log
+```
+
+Wait for `Application startup complete` / `Uvicorn running on http://0.0.0.0:8000`. First load takes a couple of minutes (weights → GPU).
+
+**Pane B — verify + pilot smoke test:**
+```bash
+# 1. confirm server is up and lists the expected model
+curl -s http://localhost:8000/v1/models | head -c 500 ; echo
+
+# 2. pilot smoke test (2 cases)
+cd ~/thesis/merge-conflict-skill
+module load Python/3.11.3-GCCcore-12.3.0
+source ~/thesis/congra-env/bin/activate
+python scripts/pilot.py --model qwen3-32b --n-cases 2 --tag smoke_test
+```
+
+**Things to watch for:**
+- **OOM on serve start.** Qwen3-32B in bf16 is ~64 GB on an 80 GB H100, leaving little room for KV cache at 32k context. If vLLM OOMs, drop `--max-model-len 32768` → `8192` and retry.
+- **`curl` returns empty / connection refused.** vLLM still loading — wait for the startup line in Pane A.
+- **pilot.py model-id mismatch.** Confirm `/v1/models` lists `Qwen/Qwen3-32B` exactly (case-sensitive) — `pilot.py`'s `MODELS["qwen3-32b"]` maps to that id.
+
+After the smoke test passes, close #72 and update this section with anything that needed correcting.
+
+## 8. Gotchas
 
 ### `HF_HOME=/huggingface` permission denied (fixed 2026-05-27)
 
