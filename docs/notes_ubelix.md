@@ -189,7 +189,23 @@ python scripts/pilot.py --model qwen3-32b --n-cases 2 --tag smoke_test
 
 After the smoke test passes, close #72 and update this section with anything that needed correcting.
 
-## 8. Gotchas
+## 8. Robust interactive pattern: sbatch hold + srun overlap
+
+`srun --pty bash` ties the SLURM job's lifetime to the local srun client — if tmux dies, the submit host reboots, or SSH drops mid-queue, the job is cancelled and you lose the queue position. (Observed 2026-05-28: ~5h queue lost when submit01 was rebooted while detached.)
+
+More robust pattern: a tiny sbatch job that just holds the allocation with `sleep infinity`, then attach interactively from any submit host via `--overlap`:
+
+```bash
+sbatch scripts/slurm/hold_h100.sh           # queue independent of any client
+squeue -u $USER                              # wait for ST=R
+srun --jobid=<JOBID> --overlap --pty bash    # attach interactively
+# ...do work...
+scancel <JOBID>                              # release when done
+```
+
+The sbatch job survives tmux death, SSH drops, and submit-host reboots. Multiple `--overlap` shells can attach simultaneously (one per pane).
+
+## 9. Gotchas
 
 ### `HF_HOME=/huggingface` permission denied (fixed 2026-05-27)
 
