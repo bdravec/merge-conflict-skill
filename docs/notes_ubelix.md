@@ -137,6 +137,13 @@ First interactive serve, drafted 2026-05-28 for the #72 smoke test. Assumes you'
 
 You need **two panes** in the tmux session — vLLM serve holds the foreground in one, pilot.py runs in the other. From inside `vllm-wait`: `Ctrl-b "` to split, `Ctrl-b ↑/↓` to switch.
 
+**Sanity check the allocation** (the moment the prompt flips from `submit01` → `gnodeXX`, before anything else — the `--time` clock is already running):
+```bash
+hostname              # should match the gnodeXX in the prompt
+nvidia-smi            # should list 1 H100, 80 GB, idle
+echo $SLURM_JOB_ID    # should print your queued job id
+```
+
 **Pane A — vLLM serve:**
 ```bash
 cd ~/thesis
