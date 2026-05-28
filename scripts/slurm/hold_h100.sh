@@ -12,9 +12,11 @@
 #   scancel <JOBID>                                   # release when done
 #
 # Mem/CPU sized for vLLM serving Qwen3-32B in bf16. NB: peak host (CPU) RAM
-# during vLLM post-load (CUDA graph compilation, KV-cache prep) is ~2x the
-# GPU model footprint — observed OOM kill on 2026-05-28 with default --mem.
-# 192G covers 32B comfortably and gives headroom for Apertus-70B fp8.
+# during vLLM post-load (CUDA graph compilation, KV-cache prep) was OOM-killing
+# with default --mem on 2026-05-28. UBELIX caps RAM at 90 GB per H100 GPU
+# (gpu-invest partition); 88G keeps a 2 GB margin. If 32B still OOMs at this
+# ceiling, fall back to `--enforce-eager` on the vLLM serve command to skip
+# CUDA graph compilation (slightly slower inference, much less host RAM).
 
 #SBATCH --job-name=h100-hold
 #SBATCH --partition=gpu-invest
@@ -22,7 +24,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=192G
+#SBATCH --mem=88G
 #SBATCH --output=slurm-%j.out
 
 echo "==========================================="
