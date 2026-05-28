@@ -155,7 +155,18 @@ vllm serve Qwen/Qwen3-32B --port 8000 --max-model-len 32768 2>&1 | tee ~/vllm_qw
 
 Wait for `Application startup complete` / `Uvicorn running on http://0.0.0.0:8000`. First load takes a couple of minutes (weights → GPU).
 
-**Pane B — verify + pilot smoke test:**
+**Pane B — overlap onto the same gnode, then verify + pilot smoke test:**
+
+Pane B is still a `submit01` shell — tmux panes don't inherit SLURM allocations, so `localhost:8000` here points at submit01, *not* the gnode where vLLM is running. First, attach this pane to the same job:
+
+```bash
+srun --jobid=<jobid> --overlap --pty bash
+```
+
+Replace `<jobid>` with the literal job number (printed by Pane A's srun, also visible via `squeue -u $USER`). `--overlap` reuses the existing allocation rather than asking SLURM for new resources. Prompt should flip to the same `gnodeXX` as Pane A. Re-run `hostname` to confirm.
+
+Then:
+
 ```bash
 # 1. confirm server is up and lists the expected model
 curl -s http://localhost:8000/v1/models | head -c 500 ; echo
