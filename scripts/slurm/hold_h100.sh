@@ -11,8 +11,10 @@
 #   # ...do work in the attached shell...
 #   scancel <JOBID>                                   # release when done
 #
-# Mem/CPU sized for vLLM serving Qwen3-32B in bf16 (~64 GB weights → host RAM
-# during load, ~4 CPUs for tokenizer/scheduler threads). Adjust for other models.
+# Mem/CPU sized for vLLM serving Qwen3-32B in bf16. NB: peak host (CPU) RAM
+# during vLLM post-load (CUDA graph compilation, KV-cache prep) is ~2x the
+# GPU model footprint — observed OOM kill on 2026-05-28 with default --mem.
+# 192G covers 32B comfortably and gives headroom for Apertus-70B fp8.
 
 #SBATCH --job-name=h100-hold
 #SBATCH --partition=gpu-invest
@@ -20,7 +22,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --mem=192G
 #SBATCH --output=slurm-%j.out
 
 echo "==========================================="
