@@ -97,20 +97,31 @@ def color(model, cond):
     return (QWEN_SHADE if model == "qwen3" else APER_SHADE)[cond]
 
 
-def plot(data, out_path):
+def plot(data, out_path, mode):
+    """mode = 'count' (y = solved cases) or 'rate' (y = solved %)."""
     fig, ax = plt.subplots(figsize=(11, 6.5))
     x = range(len(BUCKETS))
     for model in MODEL_LABEL:
         for cond in CONDITIONS:
-            ys = [data[model][cond][b][1] for b in BUCKETS]   # solved count
+            if mode == "count":
+                ys = [data[model][cond][b][1] for b in BUCKETS]
+            else:  # rate
+                ys = [100 * data[model][cond][b][1] / data[model][cond][b][0]
+                      if data[model][cond][b][0] else float("nan")
+                      for b in BUCKETS]
             ax.plot(x, ys, linestyle=LS[cond], color=color(model, cond),
                     marker=MODEL_MARKER[model], markersize=6, linewidth=2,
                     label=f"{MODEL_LABEL[model]} {cond}")
     ax.set_xticks(list(x))
     ax.set_xticklabels(BUCKETS, rotation=25, ha="right")
     ax.set_xlabel("complexity bucket")
-    ax.set_ylabel(f"solved cases (count, max(edit, winn) > {T_SOLVED})")
-    ax.set_title("Solved-case count per bucket — 8B models, python-tiny, sys placement\n"
+    if mode == "count":
+        ax.set_ylabel(f"solved cases (count, max(edit, winn) > {T_SOLVED})")
+        what = "count"
+    else:
+        ax.set_ylabel(f"solved rate (%, max(edit, winn) > {T_SOLVED})")
+        what = "rate"
+    ax.set_title(f"Solved-case {what} per bucket — 8B models, python-tiny, sys placement\n"
                  "baseline (green) vs v1/v2/v2.1 (Qwen3 blue, Apertus red)")
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=9,
@@ -144,9 +155,10 @@ def main():
     os.makedirs(FIG_DIR, exist_ok=True)
     os.makedirs(CSV_DIR, exist_ok=True)
     data = build(args.placement)
-    plot(data, os.path.join(FIG_DIR, "solved_count_by_bucket.png"))
+    plot(data, os.path.join(FIG_DIR, "solved_count_by_bucket.png"), "count")
+    plot(data, os.path.join(FIG_DIR, "solved_rate_by_bucket.png"), "rate")
     write_csv(data, os.path.join(CSV_DIR, "solved_counts.csv"))
-    print("wrote solved_count_by_bucket.png + solved_counts.csv")
+    print("wrote solved_count_by_bucket.png + solved_rate_by_bucket.png + solved_counts.csv")
     for model in MODEL_LABEL:
         row = "  ".join(
             f"{c}={sum(data[model][c][b][1] for b in BUCKETS)}" for c in CONDITIONS)
