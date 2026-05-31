@@ -112,8 +112,13 @@ def plot(data, out_path, mode):
             ax.plot(x, ys, linestyle=LS[cond], color=color(model, cond),
                     marker=MODEL_MARKER[model], markersize=6, linewidth=2,
                     label=f"{MODEL_LABEL[model]} {cond}")
+    # per-bucket case count (max across the 8 series = full bucket size;
+    # series differ only by a few dropped error rows)
+    bucket_n = {b: max(data[m][c][b][0] for m in MODEL_LABEL for c in CONDITIONS)
+                for b in BUCKETS}
     ax.set_xticks(list(x))
-    ax.set_xticklabels(BUCKETS, rotation=25, ha="right")
+    ax.set_xticklabels([f"{b}\n(n={bucket_n[b]})" for b in BUCKETS],
+                       rotation=25, ha="right")
     ax.set_xlabel("complexity bucket")
     if mode == "count":
         ax.set_ylabel(f"solved cases (count, max(edit, winn) > {T_SOLVED})")
