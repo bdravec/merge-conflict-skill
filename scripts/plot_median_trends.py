@@ -32,7 +32,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 
 HERE = os.path.dirname(__file__)
 RESULTS = os.path.join(HERE, "results")
@@ -118,84 +117,38 @@ def build_medians(key: str, placement: str):
 
 # ── plots ────────────────────────────────────────────────────────────────────
 
-def plot_overall(medians, key, title_metric, out_path):
-    fig, ax = plt.subplots(figsize=(7, 5))
-    x = range(len(CONDITIONS))
-    for model in MODEL_COLOR:
-        ys = [medians[model][c]["overall"] for c in CONDITIONS]
-        ax.plot(x, ys, marker=MODEL_MARKER[model], color=MODEL_COLOR[model],
-                linewidth=2.2, markersize=8, label=MODEL_LABEL[model])
-        for xi, yi in zip(x, ys):
-            ax.annotate(f"{yi:.3f}", (xi, yi), textcoords="offset points",
-                        xytext=(0, 8), ha="center", fontsize=8,
-                        color=MODEL_COLOR[model])
+
+def plot_by_bucket(medians, key, title_metric, out_path):
+    """x-axis = buckets; one line per (model x condition) = 8 lines.
+    Qwen3 = blue shades, Apertus = red shades, baselines = green; line-style
+    encodes version as well."""
+    QWEN_SHADE = {"v1": "#9ecae1", "v2": "#4292c6", "v2.1": "#08306b"}
+    APER_SHADE = {"v1": "#fcae91", "v2": "#fb6a4a", "v2.1": "#99000d"}
+    BASE_GREEN = {"qwen3": "#74c476", "apertus": "#238b45"}
+    LS = {"baseline": "-", "v1": ":", "v2": "--", "v2.1": "-"}
+
+    def color(model, cond):
+        if cond == "baseline":
+            return BASE_GREEN[model]
+        return (QWEN_SHADE if model == "qwen3" else APER_SHADE)[cond]
+
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    x = range(len(BUCKETS))
+    for model in MODEL_COLOR:           # qwen3, apertus
+        for cond in CONDITIONS:         # baseline, v1, v2, v2.1
+            ys = [medians[model][cond]["bucket"][b] for b in BUCKETS]
+            ax.plot(x, ys, linestyle=LS[cond], color=color(model, cond),
+                    marker=MODEL_MARKER[model], markersize=6, linewidth=2,
+                    label=f"{MODEL_LABEL[model]} {cond}")
     ax.set_xticks(list(x))
-    ax.set_xticklabels(CONDITIONS)
-    ax.set_xlabel("skill condition (sys placement)")
+    ax.set_xticklabels(BUCKETS, rotation=25, ha="right")
+    ax.set_xlabel("complexity bucket")
     ax.set_ylabel(f"median {title_metric}")
-    ax.set_title(f"Median {title_metric} trajectory — 8B models, python-tiny\n"
-                 f"pooled over all buckets")
+    ax.set_title(f"Median {title_metric} per bucket — 8B models, python-tiny\n"
+                 f"baseline (green) vs v1/v2/v2.1 (Qwen3 blue, Apertus red), sys placement")
     ax.grid(True, axis="y", alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150)
-    plt.close(fig)
-
-
-def plot_per_bucket(medians, key, title_metric, out_path):
-    fig, axes = plt.subplots(2, 4, figsize=(15, 7), sharex=True, sharey=True)
-    axes = axes.ravel()
-    x = range(len(CONDITIONS))
-    for ax, b in zip(axes, BUCKETS):
-        for model in MODEL_COLOR:
-            ys = [medians[model][c]["bucket"][b] for c in CONDITIONS]
-            ax.plot(x, ys, marker=MODEL_MARKER[model], color=MODEL_COLOR[model],
-                    linewidth=2, markersize=6, label=MODEL_LABEL[model])
-        ax.set_title(b, fontsize=10)
-        ax.grid(True, axis="y", alpha=0.3)
-        ax.set_xticks(list(x))
-        ax.set_xticklabels(CONDITIONS, fontsize=8)
-    # last cell: legend
-    axes[-1].axis("off")
-    axes[-1].legend(handles=[Line2D([0], [0], color=MODEL_COLOR[m],
-                                    marker=MODEL_MARKER[m], linewidth=2,
-                                    label=MODEL_LABEL[m]) for m in MODEL_COLOR],
-                    loc="center", fontsize=11, title="model")
-    fig.suptitle(f"Median {title_metric} per bucket — 8B models, python-tiny "
-                 f"(baseline -> v1 -> v2 -> v2.1, sys)", fontsize=12)
-    fig.supylabel(f"median {title_metric}")
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
-    fig.savefig(out_path, dpi=150)
-    plt.close(fig)
-
-
-def plot_all_buckets(medians, key, title_metric, out_path):
-    fig, ax = plt.subplots(figsize=(9, 6.5))
-    x = range(len(CONDITIONS))
-    bucket_colors = plt.cm.viridis(np.linspace(0, 0.92, len(BUCKETS)))
-    style = {"qwen3": "-", "apertus": "--"}
-    for bi, b in enumerate(BUCKETS):
-        for model in MODEL_COLOR:
-            ys = [medians[model][c]["bucket"][b] for c in CONDITIONS]
-            ax.plot(x, ys, linestyle=style[model], color=bucket_colors[bi],
-                    linewidth=1.8, marker=MODEL_MARKER[model], markersize=5,
-                    alpha=0.9)
-    ax.set_xticks(list(x))
-    ax.set_xticklabels(CONDITIONS)
-    ax.set_xlabel("skill condition (sys placement)")
-    ax.set_ylabel(f"median {title_metric}")
-    ax.set_title(f"Median {title_metric} per bucket x model — 8B, python-tiny")
-    ax.grid(True, axis="y", alpha=0.3)
-    bucket_handles = [Line2D([0], [0], color=bucket_colors[bi], linewidth=2.5,
-                             label=b) for bi, b in enumerate(BUCKETS)]
-    model_handles = [Line2D([0], [0], color="#555", linestyle=style[m],
-                            marker=MODEL_MARKER[m], label=MODEL_LABEL[m])
-                     for m in MODEL_COLOR]
-    leg1 = ax.legend(handles=bucket_handles, title="bucket (colour)",
-                     loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=8)
-    ax.add_artist(leg1)
-    ax.legend(handles=model_handles, title="model (line style)",
-              loc="lower left", bbox_to_anchor=(1.01, 0.0), fontsize=8)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=9,
+              title="model x condition")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -227,14 +180,10 @@ def main():
 
     for key in args.metrics:
         medians = build_medians(key, args.placement)
-        plot_overall(medians, key, titles[key],
-                     os.path.join(FIG_DIR, f"median_trend_overall_{key}.png"))
-        plot_per_bucket(medians, key, titles[key],
-                        os.path.join(FIG_DIR, f"median_trend_per_bucket_{key}.png"))
-        plot_all_buckets(medians, key, titles[key],
-                         os.path.join(FIG_DIR, f"median_trend_all_buckets_{key}.png"))
+        plot_by_bucket(medians, key, titles[key],
+                       os.path.join(FIG_DIR, f"median_by_bucket_{key}.png"))
         write_csv(medians, key, os.path.join(CSV_DIR, f"median_trends_{key}.csv"))
-        print(f"[{key}] wrote 3 figures + median_trends_{key}.csv")
+        print(f"[{key}] wrote median_by_bucket_{key}.png + median_trends_{key}.csv")
         for model in MODEL_COLOR:
             row = "  ".join(f"{c}={medians[model][c]['overall']:.3f}" for c in CONDITIONS)
             print(f"    {MODEL_LABEL[model]:12} overall: {row}")
