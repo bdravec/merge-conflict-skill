@@ -35,17 +35,18 @@ Same tiering convention as the 8B baseline analysis (#56, Zhang et al. 2024):
 
 ## Per bucket
 
-8B `solved%` / `failed%` columns are the Qwen3-8B no-skill baseline (#56), same tiering, shown for the scaling comparison.
+Bracketed values in `solved%` / `failed%` are the difference vs the Qwen3-8B no-skill baseline
+(#56, same tiering), in percentage points (32B − 8B; positive = 32B higher).
 
-| bucket | n | edit | winn | solved% | failed% | 8B solved% | 8B failed% |
-|---|---|---|---|---|---|---|---|
-| func | 553 | 0.441 | 0.524 | 19.7% | 3.4% | 11.9% | 3.6% |
-| sytx | 446 | 0.467 | 0.586 | 26.7% | 3.6% | 14.3% | 3.6% |
-| sytx+func | 128 | 0.410 | 0.530 | 19.5% | 4.7% | 10.9% | 6.2% |
-| text | 808 | 0.561 | 0.644 | 41.3% | 5.7% | 31.2% | 5.1% |
-| text+func | 662 | 0.528 | 0.642 | 39.0% | 3.9% | 25.2% | 3.6% |
-| text+sytx | 81 | 0.589 | 0.681 | 45.7% | 4.9% | 37.0% | 4.9% |
-| text+sytx+func | 879 | 0.567 | 0.670 | 55.1% | 13.1% | 50.1% | 13.4% |
+| bucket | n | edit | winn | solved% (compared to 8B) | failed% (compared to 8B) |
+|---|---|---|---|---|---|
+| func | 553 | 0.441 | 0.524 | 19.7% (+7.8) | 3.4% (-0.2) |
+| sytx | 446 | 0.467 | 0.586 | 26.7% (+12.4) | 3.6% (0.0) |
+| sytx+func | 128 | 0.410 | 0.530 | 19.5% (+8.6) | 4.7% (-1.5) |
+| text | 808 | 0.561 | 0.644 | 41.3% (+10.1) | 5.7% (+0.6) |
+| text+func | 662 | 0.528 | 0.642 | 39.0% (+13.8) | 3.9% (+0.3) |
+| text+sytx | 81 | 0.589 | 0.681 | 45.7% (+8.7) | 4.9% (0.0) |
+| text+sytx+func | 879 | 0.567 | 0.670 | 55.1% (+5.0) | 13.1% (-0.3) |
 
 ## Comparison vs Qwen3-8B baseline
 
