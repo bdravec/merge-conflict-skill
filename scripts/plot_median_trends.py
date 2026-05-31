@@ -118,14 +118,18 @@ def build_medians(key: str, placement: str):
 # ── plots ────────────────────────────────────────────────────────────────────
 
 
-def plot_by_bucket(medians, key, title_metric, out_path):
-    """x-axis = buckets; one line per (model x condition) = 8 lines.
+def plot_by_bucket(medians, key, title_metric, out_path, selectors=None,
+                   subtitle="baseline (green) vs v1/v2/v2.1 (Qwen3 blue, Apertus red)"):
+    """x-axis = buckets; one line per (model, condition) in `selectors`.
     Qwen3 = blue shades, Apertus = red shades, baselines = green; line-style
-    encodes version as well."""
+    encodes version as well. `selectors` defaults to all 8 (model x condition)."""
     QWEN_SHADE = {"v1": "#9ecae1", "v2": "#4292c6", "v2.1": "#08306b"}
     APER_SHADE = {"v1": "#fcae91", "v2": "#fb6a4a", "v2.1": "#99000d"}
     BASE_GREEN = {"qwen3": "#74c476", "apertus": "#238b45"}
     LS = {"baseline": "-", "v1": ":", "v2": "--", "v2.1": "-"}
+
+    if selectors is None:
+        selectors = [(m, c) for m in MODEL_COLOR for c in CONDITIONS]
 
     def color(model, cond):
         if cond == "baseline":
@@ -134,18 +138,16 @@ def plot_by_bucket(medians, key, title_metric, out_path):
 
     fig, ax = plt.subplots(figsize=(11, 6.5))
     x = range(len(BUCKETS))
-    for model in MODEL_COLOR:           # qwen3, apertus
-        for cond in CONDITIONS:         # baseline, v1, v2, v2.1
-            ys = [medians[model][cond]["bucket"][b] for b in BUCKETS]
-            ax.plot(x, ys, linestyle=LS[cond], color=color(model, cond),
-                    marker=MODEL_MARKER[model], markersize=6, linewidth=2,
-                    label=f"{MODEL_LABEL[model]} {cond}")
+    for model, cond in selectors:
+        ys = [medians[model][cond]["bucket"][b] for b in BUCKETS]
+        ax.plot(x, ys, linestyle=LS[cond], color=color(model, cond),
+                marker=MODEL_MARKER[model], markersize=6, linewidth=2,
+                label=f"{MODEL_LABEL[model]} {cond}")
     ax.set_xticks(list(x))
     ax.set_xticklabels(BUCKETS, rotation=25, ha="right")
     ax.set_xlabel("complexity bucket")
     ax.set_ylabel(f"median {title_metric}")
-    ax.set_title(f"Median {title_metric} per bucket — 8B models, python-tiny\n"
-                 f"baseline (green) vs v1/v2/v2.1 (Qwen3 blue, Apertus red), sys placement")
+    ax.set_title(f"Median {title_metric} per bucket — python-tiny, sys placement\n{subtitle}")
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=9,
               title="model x condition")
@@ -180,10 +182,26 @@ def main():
 
     for key in args.metrics:
         medians = build_medians(key, args.placement)
+        # full 8-line chart
         plot_by_bucket(medians, key, titles[key],
                        os.path.join(FIG_DIR, f"median_by_bucket_{key}.png"))
+        # Apertus only (baseline + v1/v2/v2.1)
+        plot_by_bucket(medians, key, titles[key],
+                       os.path.join(FIG_DIR, f"median_by_bucket_apertus_{key}.png"),
+                       selectors=[("apertus", c) for c in CONDITIONS],
+                       subtitle="Apertus-8B: baseline (green) vs v1/v2/v2.1 (red shades)")
+        # Qwen3 only (baseline + v1/v2/v2.1)
+        plot_by_bucket(medians, key, titles[key],
+                       os.path.join(FIG_DIR, f"median_by_bucket_qwen3_{key}.png"),
+                       selectors=[("qwen3", c) for c in CONDITIONS],
+                       subtitle="Qwen3-8B: baseline (green) vs v1/v2/v2.1 (blue shades)")
+        # v2.1 only, both models
+        plot_by_bucket(medians, key, titles[key],
+                       os.path.join(FIG_DIR, f"median_by_bucket_v2.1_{key}.png"),
+                       selectors=[("qwen3", "v2.1"), ("apertus", "v2.1")],
+                       subtitle="v2.1 only — Qwen3-8B (blue) vs Apertus-8B (red)")
         write_csv(medians, key, os.path.join(CSV_DIR, f"median_trends_{key}.csv"))
-        print(f"[{key}] wrote median_by_bucket_{key}.png + median_trends_{key}.csv")
+        print(f"[{key}] wrote 4 median_by_bucket figures + median_trends_{key}.csv")
         for model in MODEL_COLOR:
             row = "  ".join(f"{c}={medians[model][c]['overall']:.3f}" for c in CONDITIONS)
             print(f"    {MODEL_LABEL[model]:12} overall: {row}")
