@@ -58,7 +58,14 @@ with `text` +10.1 pp — while the **hardest bucket gains the least**: `text+syt
 (50.1→55.1).
 
 **Failure rates are essentially flat per bucket** (within ±1.5 pp, no systematic direction), so
-scaling buys solved-rate, not failure reduction. The bucket-ordering quirk from the 8B baseline
+scaling buys solved-rate, not failure reduction.[^failnoise] The bucket-ordering quirk from the 8B baseline
 persists in both models: `text+sytx+func` is simultaneously the highest-solved and the
 highest-failed bucket (bimodal — the polarization visible in the 8B violins), and its high failure
 share (13.4% → 13.1%) is what scaling leaves untouched.
+
+[^failnoise]: The only two positive (worse) failure deltas — `text` +0.6 pp and `text+func` +0.3 pp —
+are not significant. On the paired cases (identical 808 / 662 cases per model), they amount to +5 and
++2 extra failures; a McNemar exact test gives p = 0.23 (`text`, discordance 8 vs 3) and p = 0.73
+(`text+func`, 5 vs 3). Failures are largely shared across the two models (38 of 41 `text` failures and
+21 of 24 `text+func` failures fail under both), and several of 32B's extra failures are empty outputs
+(10 of 46 in `text`, 5 of 26 in `text+func`) rather than quality regressions.
