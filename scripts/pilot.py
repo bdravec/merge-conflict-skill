@@ -25,7 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from hashlib import sha1
 
-from openai import OpenAI
+from openai import OpenAI, APITimeoutError, APIConnectionError, InternalServerError
 
 
 # ── Model configs ─────────────────────────────────────────────────────────────
@@ -142,6 +142,9 @@ VLLM_BASE_URL = "http://localhost:8000/v1"
 TEMPERATURE   = 0.0   # deterministic for reproducibility
 MAX_TOKENS    = 2048
 CONTEXT_LINES = 5     # lines of context around the conflict (ConGra default)
+REQUEST_TIMEOUT = 300 # s, per request — abort a wedged vLLM call instead of hanging forever (#80)
+REQUEST_RETRIES = 3   # attempts on transient failures
+RETRY_BACKOFF   = 5   # s, linear backoff between retries
 
 def skill_path_for(version: str) -> str:
     return os.path.join(REPO_ROOT, "skills", f"merge-conflict-resolve-{version}", "SKILL.md")
@@ -224,8 +227,18 @@ def call_vllm(client: OpenAI, model_id: str, system_prompt: str, user_prompt: st
     )
     if extra_body:
         kwargs["extra_body"] = extra_body
-    response = client.chat.completions.create(**kwargs)
-    return response.choices[0].message.content or ""
+    # Bounded timeout + retry on transient failures only; deterministic 400s
+    # (e.g. context-length overflows) propagate immediately (#80).
+    last_err = None
+    for attempt in range(REQUEST_RETRIES):
+        try:
+            response = client.chat.completions.create(timeout=REQUEST_TIMEOUT, **kwargs)
+            return response.choices[0].message.content or ""
+        except (APITimeoutError, APIConnectionError, InternalServerError) as e:
+            last_err = e
+            if attempt < REQUEST_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF * (attempt + 1))
+    raise last_err
 
 
 def score(resolution: str, ground_truth: str) -> dict:
