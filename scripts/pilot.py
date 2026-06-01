@@ -353,6 +353,10 @@ def main():
                              "whose longest condition prompt exceeds this many "
                              "tokens. Skipped cases logged to "
                              "<results>.skipped.csv. Default: disabled.")
+    parser.add_argument("--conditions", default=None,
+                        help="Comma list over {no-skill,sys,user} to run. "
+                             "Default: all applicable. e.g. --conditions sys "
+                             "runs only the skill-{v}-sys condition (#81).")
     args = parser.parse_args()
 
     skill_v     = args.skill_version
@@ -388,13 +392,26 @@ def main():
 
     # Conditions
     if skill_v == "no-skill":
-        conditions = [("no-skill", CONGRA_SYSTEM_PROMPT, "")]
+        all_conditions = [("no-skill", CONGRA_SYSTEM_PROMPT, "")]
+        key_map = {"no-skill": all_conditions[0]}
     else:
-        conditions = [
+        all_conditions = [
             ("no-skill",                CONGRA_SYSTEM_PROMPT, ""),
             (f"skill-{skill_v}-sys",    skill_system_prompt,  ""),
             (f"skill-{skill_v}-user",   CONGRA_SYSTEM_PROMPT, skill_system_prompt),
         ]
+        key_map = {"no-skill": all_conditions[0],
+                   "sys":      all_conditions[1],
+                   "user":     all_conditions[2]}
+
+    if args.conditions:
+        keys = [k.strip() for k in args.conditions.split(",")]
+        bad = [k for k in keys if k not in key_map]
+        if bad:
+            parser.error(f"--conditions: unknown {bad}; choose from {list(key_map)}")
+        conditions = [key_map[k] for k in keys]
+    else:
+        conditions = all_conditions
 
     # Output filename: tag wins over skill-version label when given
     name_tail = args.tag if args.tag else f"skill-{skill_v}"
