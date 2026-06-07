@@ -434,6 +434,10 @@ def main():
     ap.add_argument("--v2.1", dest="v21", type=Path, required=True)
     ap.add_argument("--out-csv", type=Path, default=ANALYSIS_DIR)
     ap.add_argument("--out-fig", type=Path, default=FIGURES_DIR)
+    ap.add_argument("--sys-only", action="store_true",
+                    help="Large-pair convention: skill runs have only the "
+                         "sys condition (no user). Drops the user cells so "
+                         "figures don't carry empty columns.")
     args = ap.parse_args()
 
     args.out_csv.mkdir(parents=True, exist_ok=True)
@@ -443,11 +447,14 @@ def main():
     cells: dict[tuple[str, str], list[dict]] = {}
     cells[("no-skill", "no-skill")] = load_condition(args.baseline, "no-skill")
     cells[("v1", "sys")]   = load_condition(args.v1, "skill-v1-sys")
-    cells[("v1", "user")]  = load_condition(args.v1, "skill-v1-user")
+    if not args.sys_only:
+        cells[("v1", "user")]  = load_condition(args.v1, "skill-v1-user")
     cells[("v2", "sys")]   = load_condition(args.v2, "skill-v2-sys")
-    cells[("v2", "user")]  = load_condition(args.v2, "skill-v2-user")
+    if not args.sys_only:
+        cells[("v2", "user")]  = load_condition(args.v2, "skill-v2-user")
     cells[("v2.1", "sys")] = load_condition(args.v21, "skill-v2.1-sys")
-    cells[("v2.1", "user")] = load_condition(args.v21, "skill-v2.1-user")
+    if not args.sys_only:
+        cells[("v2.1", "user")] = load_condition(args.v21, "skill-v2.1-user")
 
     baseline_by_case = index_by_case(cells[("no-skill", "no-skill")])
 
