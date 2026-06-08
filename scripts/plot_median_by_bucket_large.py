@@ -1,10 +1,11 @@
 """
 plot_median_by_bucket_large.py — per-bucket median max-score, large pair (#89)
 
-One grouped-bar figure per large-pair model. For each of the 7 python-tiny
-buckets, four bars: the no-skill baseline (green) plus skill-v1/v2/v2.1-sys.
-Bar height = median of max(edit, winnowing) over the bucket's cases. Median
-value printed above each bar; per-bucket n printed below the group.
+One line/curve figure per large-pair model. For each of the 7 python-tiny
+buckets, four series: the no-skill baseline (green) plus skill-v1/v2/v2.1-sys.
+Each series is a line through the bucket medians of max(edit, winnowing), with a
+marker per bucket. Median value labelled at each marker; per-bucket n along the
+x-axis.
 
 Both models use their RTX-box no-skill baseline (#87 for Qwen3-32B; Apertus-70B
 was generated entirely on the RTX box, #83 — it has no other baseline). Data
@@ -22,7 +23,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Patch
 
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
@@ -88,42 +88,39 @@ def plot_model(label, stem, baseline_fname, skill_fnames):
                        load_max_scores(os.path.join(RESULTS_DIR, skill_fnames[v]),
                                        condition_filter=f"skill-v{v}-sys")))
 
-    n_series = len(series)
     x = np.arange(len(BUCKETS))
-    width = 0.8 / n_series
 
     fig, ax = plt.subplots(figsize=(13, 6))
 
-    for i, (name, color, data) in enumerate(series):
+    for name, color, data in series:
         meds = [float(np.median(data[b])) if data[b] else np.nan for b in BUCKETS]
-        offset = (i - (n_series - 1) / 2) * width
-        bars = ax.bar(x + offset, meds, width, label=name, color=color,
-                      edgecolor="white", linewidth=0.5)
-        for bx, m in zip(x + offset, meds):
-            if not np.isnan(m):
-                ax.text(bx, m + 0.012, f"{m:.2f}", ha="center", va="bottom",
-                        fontsize=6.5, rotation=90, color="#333")
+        lw = 2.6 if name == "baseline" else 1.8
+        ms = 8 if name == "baseline" else 6
+        z  = 4 if name == "baseline" else 3
+        ax.plot(x, meds, marker="o", markersize=ms, linewidth=lw,
+                color=color, label=name, zorder=z)
 
     # per-bucket n (baseline n; equal across cells on the common slice)
     base_data = series[0][2]
-    for bx, b in zip(x, BUCKETS):
-        ax.text(bx, -0.055, f"n={len(base_data[b])}", ha="center", va="top",
-                fontsize=7, color="#777")
+    bucket_labels = [f"{b}\nn={len(base_data[b])}" for b in BUCKETS]
 
     ax.axhline(T_SOLVED, color="#1a9850", linestyle=":", linewidth=0.9, alpha=0.6)
     ax.axhline(T_FAIL,   color="#b2182b", linestyle=":", linewidth=0.9, alpha=0.6)
+    ax.set_xlim(-0.4, len(BUCKETS) - 0.6)
     ax.set_ylim(0, 1.08)
     ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.grid(axis="y", linestyle="-", linewidth=0.4, alpha=0.3)
     ax.set_ylabel("median max(edit, winnowing)", fontsize=11)
     ax.set_xticks(x)
-    ax.set_xticklabels(BUCKETS, rotation=20, ha="right", fontsize=10)
+    ax.set_xticklabels(bucket_labels, fontsize=9)
     ax.set_title(
         f"{label}: per-bucket median resolution quality, baseline vs skill\n"
         f"max(edit, winnowing), python-tiny  (baseline = RTX no-skill)",
         fontsize=12,
     )
 
-    handles = [Patch(facecolor=c, label=n) for n, c, _ in series]
+    handles = [plt.Line2D([0], [0], color=c, marker="o", linewidth=2.2, label=n)
+               for n, c, _ in series]
     handles += [
         plt.Line2D([0], [0], color="#1a9850", linestyle=":", label=f"solved thr ({T_SOLVED})"),
         plt.Line2D([0], [0], color="#b2182b", linestyle=":", label=f"failed thr ({T_FAIL})"),
