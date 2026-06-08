@@ -37,7 +37,7 @@ BUCKETS = ["func", "sytx", "sytx+func", "text",
 # Each model: (label, baseline file, {version -> sys-only skill file}, colour).
 MODELS = [
     ("Qwen3-32B",
-     "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl",
+     "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",
      {"1":   "qwen3-32b_v1_sysonly_clean.jsonl",
       "2":   "qwen3-32b_v2_python_tiny_sysonly_RAW.jsonl",
       "2.1": "qwen3-32b_v2.1_python_tiny_sysonly_RAW.jsonl"},

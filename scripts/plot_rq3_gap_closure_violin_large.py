@@ -50,7 +50,7 @@ T_SOLVED = 0.8
 T_FAIL   = 0.05
 
 # --- file map -------------------------------------------------------------
-QWEN32_BASELINE   = "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl"
+QWEN32_BASELINE   = "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl"
 APERTUS70_BASELINE = "apertus-70b_baseline_python_tiny.jsonl"
 
 APERTUS70_SKILL = {  # version -> sys-only file (uniform naming)

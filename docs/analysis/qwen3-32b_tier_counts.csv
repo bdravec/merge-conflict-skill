@@ -1,12 +1,12 @@
 model,skill,condition,bucket,n,failed,partial,solved,failed_pct,partial_pct,solved_pct
-qwen3-32b,no-skill,no-skill,func,553,19,425,109,3.44,76.85,19.71
+qwen3-32b,no-skill,no-skill,func,553,19,424,110,3.44,76.67,19.89
 qwen3-32b,no-skill,no-skill,sytx,446,16,311,119,3.59,69.73,26.68
 qwen3-32b,no-skill,no-skill,sytx+func,128,6,97,25,4.69,75.78,19.53
-qwen3-32b,no-skill,no-skill,text,808,46,428,334,5.69,52.97,41.34
-qwen3-32b,no-skill,no-skill,text+func,662,26,378,258,3.93,57.10,38.97
+qwen3-32b,no-skill,no-skill,text,808,45,428,335,5.57,52.97,41.46
+qwen3-32b,no-skill,no-skill,text+func,662,26,379,257,3.93,57.25,38.82
 qwen3-32b,no-skill,no-skill,text+sytx,81,4,40,37,4.94,49.38,45.68
-qwen3-32b,no-skill,no-skill,text+sytx+func,879,115,280,484,13.08,31.85,55.06
-qwen3-32b,no-skill,no-skill,ALL,3557,232,1959,1366,6.52,55.07,38.40
+qwen3-32b,no-skill,no-skill,text+sytx+func,897,116,285,496,12.93,31.77,55.30
+qwen3-32b,no-skill,no-skill,ALL,3575,232,1964,1379,6.49,54.94,38.57
 qwen3-32b,v1,sys,func,553,21,435,97,3.80,78.66,17.54
 qwen3-32b,v1,sys,sytx,446,19,322,105,4.26,72.20,23.54
 qwen3-32b,v1,sys,sytx+func,128,6,102,20,4.69,79.69,15.62
