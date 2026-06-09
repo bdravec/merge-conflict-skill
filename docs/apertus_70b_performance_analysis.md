@@ -146,9 +146,9 @@ Within the large pair, **both models are harmed**, but in different shapes:
 
 | condition | Qwen3-32B Δsolved | Apertus-70B Δsolved | Qwen3-32B Δedit | Apertus-70B Δedit |
 |---|--:|--:|--:|--:|
-| v1 sys | −3.17 | −1.37 | −0.025 | −0.011 |
-| v2 sys | −2.10 | −3.71 | −0.017 | −0.032 |
-| v2.1 sys | **−0.42** | −2.70 | −0.004 | −0.022 |
+| v1 sys | −3.34 | −1.37 | −0.027 | −0.011 |
+| v2 sys | −2.27 | −3.71 | −0.019 | −0.032 |
+| v2.1 sys | **−0.59** | −2.70 | −0.006 | −0.022 |
 
 - **Qwen3-32B recovers monotonically toward parity (v2.1 ≈ neutral);
   Apertus-70B does not** (v2 worst, v2.1 still −2.70pp). The clean
@@ -167,7 +167,7 @@ Within the large pair, **both models are harmed**, but in different shapes:
 | Apertus-8B | 21.47% | −2.13 | +4.55 | **+7.10** |
 | Qwen3-8B | 29.16% | −5.60 | +0.00 | −0.86 |
 | Apertus-70B | 31.52% | −1.37 | −3.71 | −2.70 |
-| Qwen3-32B | 38.40% | −3.17 | −2.10 | −0.42 |
+| Qwen3-32B | 38.57% | −3.34 | −2.27 | −0.59 |
 
 This is the central result of the large-pair analysis:
 
