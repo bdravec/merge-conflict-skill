@@ -6,3 +6,8 @@ venv/
 .env
 .DS_Store
 .idea/
+
+# pilot scratch artifacts (raw responses / run logs) — keep curated results only
+scripts/results/*_RAW.jsonl
+scripts/results/*_raw_*.jsonl
+scripts/results/pilot_run_*.log
