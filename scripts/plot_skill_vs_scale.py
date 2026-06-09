@@ -53,6 +53,17 @@ FIGURES = [
             ("Qwen3-32B\nbaseline",   RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl", "no-skill"),
         ],
     },
+    {
+        # 3-column variant: 8B no-skill baseline first makes the regression
+        # from v2.1 explicit (skill *hurts* the already-strong Qwen3 8B).
+        "title": "Qwen3 skill vs scale (with 8B baseline)",
+        "out_name": "baseline_scaling_qwen3_v2.1_vs_32b_with_8b.png",
+        "columns": [
+            ("Qwen3-8B\nbaseline",    RESULTS_DIR / "pilot_results_qwen3_v2.1_python_tiny.jsonl",            "no-skill"),
+            ("Qwen3-8B\n+v2.1 skill", RESULTS_DIR / "pilot_results_qwen3_v2.1_python_tiny.jsonl",            "skill-v2.1-sys"),
+            ("Qwen3-32B\nbaseline",   RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl", "no-skill"),
+        ],
+    },
 ]
 
 # Headline pass/fail definition (docs/baseline_32b_analysis.md, #56):
@@ -61,6 +72,9 @@ FIGURES = [
 #   partial = everything between
 TIERS  = ["Solved", "Partial", "Failed"]
 COLORS = {"Solved": "#2e7d32", "Partial": "#ffb74d", "Failed": "#e53935"}
+
+# Right-panel per-column bar colors (first two preserve the original 2-col look).
+BAR_COLORS = ["#90a4ae", "#1565c0", "#7b1fa2"]
 
 
 def load_clean(path, condition):
@@ -122,12 +136,13 @@ def make_figure(spec):
 
     # ---- right: mean edit & winnowing ----
     metrics = [("edit", "Edit"), ("winnowing", "Winnowing")]
-    w = 0.35
+    n = len(labels)
+    w = min(0.35, 0.8 / n)  # keeps the 2-column layout byte-identical
     xm = np.arange(len(metrics))
     for i, lab in enumerate(labels):
         vals = [mean_sim(data[lab], k) for k, _ in metrics]
-        bars = axR.bar(xm + (i - 0.5) * w, vals, w, label=lab.replace("\n", " "),
-                       color=("#90a4ae" if i == 0 else "#1565c0"), edgecolor="black", linewidth=0.5)
+        bars = axR.bar(xm + (i - (n - 1) / 2) * w, vals, w, label=lab.replace("\n", " "),
+                       color=BAR_COLORS[i % len(BAR_COLORS)], edgecolor="black", linewidth=0.5)
         axR.bar_label(bars, fmt="%.3f", fontsize=9, padding=2)
     axR.set_xticks(xm)
     axR.set_xticklabels([lbl for _, lbl in metrics], fontsize=11)
