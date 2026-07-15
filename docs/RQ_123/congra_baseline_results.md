@@ -36,14 +36,13 @@ small vs large model, median line in dark red.
 
 ## Prose (Results — facts only)
 
-Figure 1 summarises the no-skill ConGra baselines for all four models. Solved rate
-rises with model size within each family: Apertus 21.5% → 31.5% (8B → 70B) and
-Qwen3 29.2% → 38.6% (8B → 32B). Failure rates are low and nearly size-invariant
-(Apertus 7.5% / 6.7%, Qwen3 6.5% / 6.5%), so the gain comes almost entirely from
-partial cases becoming solved (Apertus partial 71.1% → 61.8%, Qwen3 64.3% →
-54.9%). Mean similarity also rises with size on both metrics (Apertus +0.09 edit,
-+0.08 winnowing; Qwen3 +0.07 edit, +0.06 winnowing), consistent across the two
-measures.
+Figure 1 summarises the no-skill ConGra baselines for all four models on the
+python-tiny subset. Following ConGra, a case counts as solved at a per-case
+max(edit, winnowing) > 0.8 and failed at ≤ 0.05, with the remainder partial.
+Solved rate rises with model size within each family: Apertus 21.5% → 31.5%
+(8B→70B) and Qwen3 29.2% → 38.6% (8B→32B). Failure rates are nearly size-invariant
+(Apertus 7.5% / 6.7%, Qwen3 6.5% / 6.5%), so the higher solved rates of larger
+models correspond with lower partial-solved rates.
 
 Figure 2 breaks the baseline down by conflict-complexity bucket. In both families
 the larger model raises the median and the solved rate in every one of the seven
@@ -70,17 +69,15 @@ solved at 8B). Family failure rates stay roughly flat across buckets.
 This section presents the evaluation results for each model on the three
 SWE-task benchmarks, with and without \texttt{SKILL.md}.
 
-Figure~\ref{fig:congra_baseline_overview} summarises the no-skill ConGra
-baselines for all four models on the \texttt{python-tiny} subset. Following
-ConGra, a case counts as \emph{solved} at a per-case
+Figure~\ref{fig:ConGra_baseline_AllModels_overview} summarises the no-skill
+ConGra baselines for all four models on the \texttt{python-tiny} subset.
+Following ConGra, a case counts as \emph{solved} at a per-case
 $\max(\mathrm{edit},\mathrm{winnowing}) > 0.8$ and \emph{failed} at
 $\leq 0.05$, with the remainder \emph{partial}. Solved rate rises with model
 size within each family: Apertus $21.5\%\rightarrow31.5\%$ (8B$\rightarrow$70B)
-and Qwen3 $29.2\%\rightarrow38.6\%$ (8B$\rightarrow$32B). Failure rates are low
-and nearly size-invariant (Apertus $7.5\%/6.7\%$, Qwen3 $6.5\%/6.5\%$), so the
-gain comes almost entirely from partial cases becoming solved. Mean similarity
-also rises with size on both metrics (Apertus $+0.09$ edit, $+0.08$ winnowing;
-Qwen3 $+0.07$ edit, $+0.06$ winnowing), consistent across the two measures.
+and Qwen3 $29.2\%\rightarrow38.6\%$ (8B$\rightarrow$32B). Failure rates are
+nearly size-invariant (Apertus $7.5\%/6.7\%$, Qwen3 $6.5\%/6.5\%$), so the
+higher solved rates of larger models correspond with lower partial-solved rates.
 
 Figures~\ref{fig:congra_apertus_perbucket} and~\ref{fig:congra_qwen3_perbucket}
 break the baseline down by conflict-complexity bucket, plotting the
@@ -108,7 +105,7 @@ highest solved rate ($50.1\%\rightarrow55.3\%$), while \texttt{func},
     \includegraphics[width=0.95\textwidth]{figures/congra_baseline_overview.pdf}
     \caption{No-skill ConGra baselines for all four models on \texttt{python-tiny}:
              solved / partial / failed rates.}
-    \label{fig:congra_baseline_overview}
+    \label{fig:ConGra_baseline_AllModels_overview}
 \end{figure}
 
 \begin{figure}[t!]
