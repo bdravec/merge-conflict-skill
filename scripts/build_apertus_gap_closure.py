@@ -6,6 +6,8 @@ Within-family scaling axis, python-tiny. Metric = max(edit, winnowing), solved =
 
   Gap       = 70B - 8B            (no-skill baselines)
   Recovered = (8B + skill) - 8B
+  Residual  = 70B - (8B + skill)  (= Gap - Recovered; residual gap left after the
+                                    skill, in pp; negative => skill overtook 70B)
   Closure   = Recovered / Gap     (negative => skill fell below the 8B baseline)
 
 Same solved-rate logic as plot_rq3_gap_closure_violin.py: errors skipped,
@@ -60,13 +62,14 @@ def build_table(small_base, small_skill, large_base, skill_cond, label):
 
     rows = BUCKETS + ["Aggregate"]
     print(f"\n=== {label} ===")
-    print(f"{'Bucket':16} {'8B':>7} {'8B+sk':>7} {'Large':>7} {'Gap':>7} {'Recov':>7} {'Closure':>8}")
+    print(f"{'Bucket':16} {'8B':>7} {'8B+sk':>7} {'Large':>7} {'Gap':>7} {'Recov':>7} {'Resid':>7} {'Closure':>8}")
     for b in rows:
         s, sk, lg = small[b], skill[b], large[b]
         gap = lg - s
         rec = sk - s
+        res = lg - sk  # residual gap after skill (= gap - rec); negative => skill overtook large
         clo = (rec / gap * 100.0) if gap else float("nan")
-        print(f"{b:16} {s:7.2f} {sk:7.2f} {lg:7.2f} {gap:7.2f} {rec:+7.2f} {clo:+7.0f}%")
+        print(f"{b:16} {s:7.2f} {sk:7.2f} {lg:7.2f} {gap:7.2f} {rec:+7.2f} {res:+7.2f} {clo:+7.0f}%")
 
 
 if __name__ == "__main__":
