@@ -55,10 +55,12 @@ are similar across buckets, apart from a ~3 pp drop in `sytx+func` (7.0% → 3.9
 and a slight rise in `text+sytx` (3.7% → 4.9%). In `text+sytx+func` both models are
 bimodal, with cases massed near 0 and 1.
 
-For Qwen3, the largest solved-rate gain is +13.6 pp in `text+func`;
-`text+sytx+func` has both the highest failure rate (~13%) and the highest solved
-rate (50.1% → 55.3%), while `func`, `sytx` and `sytx+func` are the weakest (11–15%
-solved at 8B). Family failure rates stay roughly flat across buckets.
+Across the complexity buckets in Figure 2, the two models fail at similar rates
+within each bucket; across buckets the fail rate is low (~3.5–6%) except in
+`text+sytx+func` (~13%). Bucket n ranges from 81 (`text+sytx`) to ~896
+(`text+sytx+func`). In the `sytx+func` bucket, for example, Qwen3-32B fails on
+1.5 pp fewer cases than Qwen3-8B (4.7% vs. 6.2%) while solving 8.6 pp more (19.5%
+vs. 10.9%).
 
 ## LaTeX source
 
@@ -79,7 +81,7 @@ and Qwen3 $29.2\%\rightarrow38.6\%$ (8B$\rightarrow$32B). Failure rates are
 nearly size-invariant (Apertus $7.5\%/6.7\%$, Qwen3 $6.5\%/6.5\%$), so the
 higher solved rates of larger models correspond with lower partial-solved rates.
 
-Figures~\ref{fig:congra_apertus_perbucket} and~\ref{fig:congra_qwen3_perbucket}
+Figures~\ref{fig:baseline_violin_scaling_apertus_perBucket} and~\ref{fig:baseline_violin_scaling_qwen3_perBucket}
 break the baseline down by conflict-complexity bucket, plotting the
 distribution of $\max(\mathrm{edit},\mathrm{winnowing})$ with the median (dark
 red line). In both families the larger model raises the median and the solved
@@ -94,11 +96,14 @@ ${\sim}3$~pp drop in \texttt{sytx+func} ($7.0\%\rightarrow3.9\%$) and a slight
 rise in \texttt{text+sytx} ($3.7\%\rightarrow4.9\%$). In \texttt{text+sytx+func}
 both models are bimodal, with cases massed near $0$ and $1$.
 
-For Qwen3, the largest solved-rate gain is $+13.6$~pp in \texttt{text+func};
-\texttt{text+sytx+func} has both the highest failure rate (${\sim}13\%$) and the
-highest solved rate ($50.1\%\rightarrow55.3\%$), while \texttt{func},
-\texttt{sytx} and \texttt{sytx+func} are the weakest ($11$--$15\%$ solved at
-8B). Family failure rates stay roughly flat across buckets.
+Across the complexity buckets in
+Figure~\ref{fig:baseline_violin_scaling_qwen3_perBucket}, the two models fail at
+similar rates within each bucket; across buckets the fail rate is low
+(${\sim}3.5$--$6\%$) except in \texttt{text+sytx+func} (${\sim}13\%$). Bucket $n$
+ranges from 81 (\texttt{text+sytx}) to ${\sim}896$ (\texttt{text+sytx+func}). In
+the \texttt{sytx+func} bucket, for example, Qwen3-32B fails on $1.5$~pp fewer
+cases than Qwen3-8B ($4.7\%$ vs.\ $6.2\%$) while solving $8.6$~pp more ($19.5\%$
+vs.\ $10.9\%$).
 
 \begin{figure}[t!]
     \centering
@@ -114,14 +119,14 @@ highest solved rate ($50.1\%\rightarrow55.3\%$), while \texttt{func},
         \centering
         \includegraphics[width=\textwidth]{figures/baseline_violin_scaling_apertus_perBucket.pdf}
         \caption{Apertus family (8B vs.\ 70B), solved rate by complexity bucket.}
-        \label{fig:congra_apertus_perbucket}
+        \label{fig:baseline_violin_scaling_apertus_perBucket}
     \end{subfigure}
     \vspace{1em}
     \begin{subfigure}{0.95\textwidth}
         \centering
         \includegraphics[width=\textwidth]{figures/baseline_violin_scaling_qwen3_perBucket.pdf}
         \caption{Qwen3 family (8B vs.\ 32B), solved rate by complexity bucket.}
-        \label{fig:congra_qwen3_perbucket}
+        \label{fig:baseline_violin_scaling_qwen3_perBucket}
     \end{subfigure}
     \caption{No-skill ConGra baseline by conflict-complexity bucket.}
 \end{figure}
