@@ -31,11 +31,11 @@ first re-derive the Qwen3 #97 numbers as a correctness check).
 |---|---:|---:|---:|---:|---:|---:|
 | func | 7.1 | 11.7 | 15.6 | 8.5 | +4.7 | +55% |
 | sytx | 4.7 | 11.7 | 17.5 | 12.8 | +7.0 | +54% |
-| sytx+func | 11.7 | 14.8 | 14.1 | 2.3 | +3.1 | +133% |
+| sytx+func | 11.7 | 14.8 | 14.1 | 2.3 | +3.1 | +133%[^overtake] |
 | text | 22.9 | 27.4 | 34.0 | 11.1 | +4.5 | +40% |
 | text+func | 19.4 | 25.6 | 27.2 | 7.9 | +6.2 | +79% |
 | text+sytx | 17.3 | 25.9 | 34.6 | 17.3 | +8.6 | +50% |
-| text+sytx+func | 40.8 | 53.0 | 51.5 | 10.7 | +12.2 | +114% |
+| text+sytx+func | 40.8 | 53.0 | 51.5 | 10.7 | +12.2 | +114%[^overtake] |
 | **Aggregate** | **21.47** | **28.57** | **31.52** | **10.05** | **+7.10** | **+71%** |
 
 Closure is **positive in all 7 buckets**. In aggregate the skill recovers +71% of
@@ -43,6 +43,14 @@ the 10.05 pp scale gap. In two buckets the 8B+skill *overtakes* the 70B baseline
 `sytx+func` (+133%) and `text+sytx+func` (+114%). This is the mirror image of the
 Qwen3 family, where the same skill regressed the 8B (−9% aggregate closure) — the
 skill's effect tracks family/baseline strength, not scale.
+
+[^overtake]: A closure above 100% means Recovered exceeds the Gap, i.e.
+    (8B+skill) − 8B is larger than 70B − 8B, so the 8B+skill solved rate
+    *overtook* the 70B no-skill baseline on that bucket: `sytx+func`
+    (14.8% vs 14.1%) and `text+sytx+func` (53.0% vs 51.5%). This reading holds
+    because the Gap is positive in every Apertus bucket; a bucket with a negative
+    Gap (8B already ahead of 70B) would flip the ratio's sign and would not carry
+    this meaning.
 
 ## LaTeX source
 
