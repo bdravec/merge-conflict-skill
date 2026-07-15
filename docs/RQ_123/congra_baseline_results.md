@@ -41,8 +41,9 @@ rises with model size within each family: Apertus 21.5% → 31.5% (8B → 70B) a
 Qwen3 29.2% → 38.6% (8B → 32B). Failure rates are low and nearly size-invariant
 (Apertus 7.5% / 6.7%, Qwen3 6.5% / 6.5%), so the gain comes almost entirely from
 partial cases becoming solved (Apertus partial 71.1% → 61.8%, Qwen3 64.3% →
-54.9%). Mean similarity also rises with size on both metrics (Apertus ~+0.06–0.07;
-Qwen3 +0.08 edit, +0.06 winnowing), consistent across the two measures.
+54.9%). Mean similarity also rises with size on both metrics (Apertus +0.09 edit,
++0.08 winnowing; Qwen3 +0.07 edit, +0.06 winnowing), consistent across the two
+measures.
 
 Figure 2 breaks the baseline down by conflict-complexity bucket. In both families
 the larger model raises the median and the solved rate in every one of the seven
@@ -78,8 +79,8 @@ size within each family: Apertus $21.5\%\rightarrow31.5\%$ (8B$\rightarrow$70B)
 and Qwen3 $29.2\%\rightarrow38.6\%$ (8B$\rightarrow$32B). Failure rates are low
 and nearly size-invariant (Apertus $7.5\%/6.7\%$, Qwen3 $6.5\%/6.5\%$), so the
 gain comes almost entirely from partial cases becoming solved. Mean similarity
-also rises with size on both metrics (Apertus ${\sim}{+}0.06$--$0.07$; Qwen3
-$+0.08$ edit, $+0.06$ winnowing), consistent across the two measures.
+also rises with size on both metrics (Apertus $+0.09$ edit, $+0.08$ winnowing;
+Qwen3 $+0.07$ edit, $+0.06$ winnowing), consistent across the two measures.
 
 Figures~\ref{fig:congra_apertus_perbucket} and~\ref{fig:congra_qwen3_perbucket}
 break the baseline down by conflict-complexity bucket, plotting the
@@ -131,8 +132,8 @@ highest solved rate ($50.1\%\rightarrow55.3\%$), while \texttt{func},
 
 ## Open checks (before finalising)
 
-- Mean-similarity deltas (Apertus ~+0.06–0.07; Qwen3 +0.08/+0.06) — not yet
-  recomputed from source; confirm the raw per-model means (values are absolute on
-  the 0–1 scale, **not** %).
+- Mean-similarity deltas computed from source: Apertus +0.086 edit / +0.082 winn,
+  Qwen3 +0.070 edit / +0.062 winn (absolute, 0–1 scale). Raw means: Apertus
+  0.384/0.493 → 0.470/0.575; Qwen3 0.452/0.559 → 0.522/0.622.
 - `text+sytx+func` failure rate stated as ~13% — confirm the exact per-model figures.
 - Bucket n range (81 … ~896) — confirm the upper bound.
