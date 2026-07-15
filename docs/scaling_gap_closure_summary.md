@@ -11,19 +11,22 @@ skill-v2.1-sys. Rates are pooled across all buckets.
 **Definitions** (identical to the family tables)
 - **Gap** = Large − 8B solved rate (no-skill baselines).
 - **Recovered** = (8B + skill) − 8B baseline.
+- **Residual** = Large − (8B + skill), i.e. Gap − Recovered: the gap remaining
+  after the skill, in pp.
 - **Closure** = Recovered / Gap.
 
 **Anchor note.** The large model differs by family — Qwen3 is **32B** (~4× the
-8B), Apertus is **70B** (~9×). The `Gap` column is therefore *not* comparable
-across rows; each row is a self-contained within-family scaling story. The row to
-compare is **Closure**, which is normalised to each family's own gap.
+8B), Apertus is **70B** (~9×). The `Gap` and `Residual` columns are therefore *not*
+comparable across rows (both depend on the anchor); each row is a self-contained
+within-family scaling story. The row to compare is **Closure**, which is normalised
+to each family's own gap.
 
 ## Table
 
-| Family (large anchor) | 8B (%) | 8B+skill (%) | Large (%) | Gap (pp) | Recovered (pp) | Closure |
-|---|---:|---:|---:|---:|---:|---:|
-| Qwen3 (→ 32B) | 29.16 | 28.30 | 38.57 | 9.42 | −0.86 | −9% |
-| Apertus (→ 70B) | 21.47 | 28.57 | 31.52 | 10.05 | +7.10 | +71% |
+| Family (large anchor) | 8B (%) | 8B+skill (%) | Large (%) | Gap (pp) | Recovered (pp) | Residual (pp) | Closure |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Qwen3 (→ 32B) | 29.16 | 28.30 | 38.57 | 9.42 | −0.86 | +10.28 | −9% |
+| Apertus (→ 70B) | 21.47 | 28.57 | 31.52 | 10.05 | +7.10 | +2.95 | +71% |
 
 The same skill-v2.1-sys moves the two families in **opposite directions**: it
 regresses Qwen3-8B (−9% closure, skill *widens* the gap) but recovers +71% of
@@ -37,19 +40,20 @@ not model scale.
   \centering
   \caption{Scaling-axis gap closure, aggregate per family (python-tiny,
     skill-v2.1-sys). \emph{Gap} $=$ Large$-$8B no-skill; \emph{Recovered} $=$
-    8B+skill $-$ 8B; \emph{Closure} $=$ Recovered\,/\,Gap. The large anchor differs
-    by family (Qwen3 32B $\sim$4$\times$, Apertus 70B $\sim$9$\times$), so \emph{Gap}
-    is not comparable across rows; compare \emph{Closure}, which is normalised to
-    each family's own gap.}
+    8B+skill $-$ 8B; \emph{Residual} $=$ Large$-$(8B+skill) $=$ Gap$-$Recovered;
+    \emph{Closure} $=$ Recovered\,/\,Gap. The large anchor differs by family (Qwen3
+    32B $\sim$4$\times$, Apertus 70B $\sim$9$\times$), so \emph{Gap} and
+    \emph{Residual} are not comparable across rows; compare \emph{Closure}, which is
+    normalised to each family's own gap.}
   \label{tab:scaling_gap_closure_summary}
-  \begin{tabular}{lrrrrrr}
+  \begin{tabular}{lrrrrrrr}
     \toprule
-                        & \multicolumn{3}{c}{Solved rate (\%)} &          &            &          \\
+                        & \multicolumn{3}{c}{Solved rate (\%)} &          &            &            &          \\
     \cmidrule(lr){2-4}
-    Family (anchor)     & 8B    & 8B+skill & Large & Gap (pp) & Recov.\ (pp)      & Closure          \\
+    Family (anchor)     & 8B    & 8B+skill & Large & Gap (pp) & Recov.\ (pp) & Resid.\ (pp)   & Closure          \\
     \midrule
-    Qwen3 ($\to$32B)    & 29.16 & 28.30    & 38.57 & \phantom{0}9.42 & $-0.86$        & $-9\%$           \\
-    Apertus ($\to$70B)  & 21.47 & 28.57    & 31.52 & 10.05           & $+7.10$        & $+71\%$          \\
+    Qwen3 ($\to$32B)    & 29.16 & 28.30    & 38.57 & \phantom{0}9.42 & $-0.86$        & $+10.28$       & $-9\%$           \\
+    Apertus ($\to$70B)  & 21.47 & 28.57    & 31.52 & 10.05           & $+7.10$        & \phantom{0}$+2.95$ & $+71\%$      \\
     \bottomrule
   \end{tabular}
 \end{table}
