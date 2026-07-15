@@ -3,7 +3,7 @@
 Does a small Qwen3-8B with the skill-v2.1 SKILL.md in the system prompt close the
 performance gap to the larger Qwen3-32B run without a skill? Per-bucket and
 aggregate, on the `python-tiny` subset. Metric = `max(edit, winnowing)`, solved =
-score > 0.8. Numbers match the figure `docs/figures/rq3_scaling_gap_closure_v2.1_max.png`.
+score > 0.8. Numbers match the figure `docs/RQ_123/rq3_scaling_gap_closure_v2.1_max.png`.
 
 **Definitions**
 - **Gap** = 32B − 8B solved rate (no-skill baselines).

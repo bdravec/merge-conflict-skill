@@ -11,7 +11,7 @@ Framing A — WITHIN-SCALE (direct analog of the 8B RQ3 chart):
     RIGHT = Apertus-70B skill-vX-sys  (weaker family, large, + skill)
   Single per-bucket split-violin panel. "Does the weaker large model + skill
   catch the stronger large baseline?"
-  -> docs/figures/rq3_large_gap_closure_v{ver}_max.png
+  -> docs/RQ_123/rq3_large_gap_closure_v{ver}_max.png
 
 Framing B — SCALING-AXIS (the literal RQ3 wording, family held fixed so only
   scale + skill vary):
@@ -19,11 +19,11 @@ Framing B — SCALING-AXIS (the literal RQ3 wording, family held fixed so only
     RIGHT = small + skill-vX-sys      (Qwen3-8B / Apertus-8B skill)
   Two stacked panels (Qwen family top, Apertus family bottom). "Does the small
   model + skill close the gap to the large model with no skill?"
-  -> docs/figures/rq3_scaling_gap_closure_v{ver}_max.png
+  -> docs/RQ_123/rq3_scaling_gap_closure_v{ver}_max.png
 
 Outputs (6 figures total):
-  - docs/figures/rq3_large_gap_closure_v{1,2,2.1}_max.png
-  - docs/figures/rq3_scaling_gap_closure_v{1,2,2.1}_max.png
+  - docs/RQ_123/rq3_large_gap_closure_v{1,2,2.1}_max.png
+  - docs/RQ_123/rq3_scaling_gap_closure_v{1,2,2.1}_max.png
 """
 
 import json
@@ -37,7 +37,7 @@ from matplotlib.patches import Patch
 
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
-FIG_DIR     = os.path.join(os.path.dirname(__file__), "..", "docs", "figures")
+FIG_DIR     = os.path.join(os.path.dirname(__file__), "..", "docs", "RQ_123")
 
 BUCKETS = ["func", "sytx", "sytx+func", "text",
            "text+func", "text+sytx", "text+sytx+func"]

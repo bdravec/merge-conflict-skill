@@ -10,7 +10,7 @@ positive in every bucket.
 python-tiny, metric = max(edit, winnowing), solved = score > 0.8, skill =
 skill-v2.1-sys. Reuses solved_rates() so numbers match the tables exactly.
 
-Output: docs/figures/family_gap_closure_comparison.png
+Output: docs/RQ_123/family_gap_closure_comparison.png
 """
 
 import os
@@ -22,7 +22,7 @@ import numpy as np
 
 from build_apertus_gap_closure import solved_rates, BUCKETS
 
-FIG_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "figures")
+FIG_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "RQ_123")
 
 # Family colours — identical to the existing repo figures (colour follows entity).
 QWEN_COLOR    = "#4575b4"

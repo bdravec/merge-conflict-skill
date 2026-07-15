@@ -16,9 +16,9 @@ should show the opposite.
 Metric: max(edit, winnowing).
 
 Outputs:
-  - docs/figures/rq3_gap_closure_v1_max.png
-  - docs/figures/rq3_gap_closure_v2_max.png
-  - docs/figures/rq3_gap_closure_v2.1_max.png
+  - docs/RQ_123/rq3_gap_closure_v1_max.png
+  - docs/RQ_123/rq3_gap_closure_v2_max.png
+  - docs/RQ_123/rq3_gap_closure_v2.1_max.png
 """
 
 import json
@@ -32,7 +32,7 @@ from matplotlib.patches import Patch
 
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
-FIG_DIR     = os.path.join(os.path.dirname(__file__), "..", "docs", "figures")
+FIG_DIR     = os.path.join(os.path.dirname(__file__), "..", "docs", "RQ_123")
 
 BUCKETS = ["func", "sytx", "sytx+func", "text",
            "text+func", "text+sytx", "text+sytx+func"]
