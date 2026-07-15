@@ -1,7 +1,7 @@
 """
 build_apertus_gap_closure.py — Apertus scaling-axis gap-closure table (8B -> 70B, #98)
 
-Apertus-family analogue of the Qwen3 scaling table (docs/qwen3_gap_closure_v2_1.md, #97).
+Apertus-family analogue of the Qwen3 scaling table (docs/RQ_123/qwen3_gap_closure_v2_1.md, #97).
 Within-family scaling axis, python-tiny. Metric = max(edit, winnowing), solved = score > 0.8.
 
   Gap       = 70B - 8B            (no-skill baselines)

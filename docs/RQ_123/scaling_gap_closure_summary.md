@@ -2,7 +2,7 @@
 
 Aggregate-only summary of the two within-family scaling-axis gap-closure tables,
 one row per family. Full per-bucket detail lives in the family docs:
-[Qwen3 → 32B](../qwen3_gap_closure_v2_1.md) (#97) and
+[Qwen3 → 32B](qwen3_gap_closure_v2_1.md) (#97) and
 [Apertus → 70B](apertus_gap_closure_v2_1.md) (#98).
 
 `python-tiny`, metric = `max(edit, winnowing)`, solved = score > 0.8, skill =

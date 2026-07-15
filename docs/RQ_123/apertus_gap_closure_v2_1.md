@@ -4,7 +4,7 @@ Does a small Apertus-8B with the skill-v2.1 SKILL.md in the system prompt close 
 performance gap to the larger Apertus-70B run without a skill? Per-bucket and
 aggregate, on the `python-tiny` subset. Metric = `max(edit, winnowing)`, solved =
 score > 0.8. Apertus-family analogue of the Qwen3 scaling table
-(`docs/qwen3_gap_closure_v2_1.md`, #97).
+(`docs/RQ_123/qwen3_gap_closure_v2_1.md`, #97).
 
 **Anchor note.** The Apertus large model is **70B** (~9× the 8B); the Qwen3 large
 model is 32B (~4×). This table is a *within-family* scaling story — the `Gap`
