@@ -60,6 +60,13 @@ Apertus-8B improves its solved rate by 7.1 pp with the skill-v2.1 SKILL.md in it
 system prompt. All other models solve fewer cases with the skill: Qwen3-8B loses
 0.86 pp, Apertus-70B 2.7 pp and Qwen3-32B 0.59 pp.
 
+To assess whether the skill's effect varies across complexity buckets,
+Table~\ref{tab:apertus_gap_closure} shows the Apertus family, where the 8B model
+with skill-v2.1 reaches or exceeds the Apertus-70B no-skill baseline in two of
+seven buckets: `sytx+func` (14.8 vs. 14.1) and `text+sytx+func` (53.0 vs. 51.5),
+and recovers between 40% and 79% of the gap in the other five (smallest closure in
+`text`, 40%; largest in `text+func`, 79%).
+
 In Figure 4.2 (Apertus panel), the Apertus-8B median with the v2.1 skill reaches
 or exceeds the 70B baseline in several buckets (e.g. `text+func` 0.61 vs. 0.61,
 `text+sytx+func` 0.83 vs. 0.81).
@@ -79,6 +86,13 @@ baseline (Figure~\ref{fig:rq3_scaling_gap_closure}).
 Apertus-8B improves its solved rate by 7.1~pp with the skill-v2.1
 \texttt{SKILL.md} in its system prompt. All other models solve fewer cases with
 the skill: Qwen3-8B loses 0.86~pp, Apertus-70B 2.7~pp and Qwen3-32B 0.59~pp.
+
+To assess whether the skill's effect varies across complexity buckets,
+Table~\ref{tab:apertus_gap_closure} shows the Apertus family, where the 8B model
+with skill-v2.1 reaches or exceeds the Apertus-70B no-skill baseline in two of
+seven buckets: 'sytx+func' (14.8 vs.\ 14.1) and 'text+sytx+func' (53.0 vs.\ 51.5),
+and recovers between 40\% and 79\% of the gap in the other five (smallest closure
+in 'text', 40\%; largest in 'text+func', 79\%).
 
 In Figure~\ref{fig:rq3_scaling_gap_closure} (Apertus panel), the Apertus-8B
 median with the v2.1 skill reaches or exceeds the 70B baseline in several buckets
