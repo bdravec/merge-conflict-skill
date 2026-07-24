@@ -17,7 +17,7 @@ Framing B — SCALING-AXIS (the literal RQ3 wording, family held fixed so only
   scale + skill vary):
     LEFT  = large no-skill            (Qwen3-32B / Apertus-70B baseline)
     RIGHT = small + skill-vX-sys      (Qwen3-8B / Apertus-8B skill)
-  Two stacked panels (Qwen family top, Apertus family bottom). "Does the small
+  Two stacked panels (Apertus family top, Qwen family bottom). "Does the small
   model + skill close the gap to the large model with no skill?"
   -> docs/RQ_123/rq3_scaling_gap_closure_v{ver}_max.png
 
@@ -193,12 +193,12 @@ def plot_scaling(version: str):
     positions = list(range(len(BUCKETS)))
     # (family label, large baseline file, small skill file, small skill colour)
     families = [
-        ("Qwen3", QWEN32_BASELINE,
-         QWEN8_SKILL_TPL.format(ver=version), "Qwen3-32B no-skill",
-         "Qwen3-8B", QWEN_COLOR),
         ("Apertus", APERTUS70_BASELINE,
          APERTUS8_SKILL_TPL.format(ver=version), "Apertus-70B no-skill",
          "Apertus-8B", APERTUS_COLOR),
+        ("Qwen3", QWEN32_BASELINE,
+         QWEN8_SKILL_TPL.format(ver=version), "Qwen3-32B no-skill",
+         "Qwen3-8B", QWEN_COLOR),
     ]
     fig, axes = plt.subplots(2, 1, figsize=(12, 11), sharex=True)
 

@@ -9,8 +9,8 @@ copy-paste source. All numbers verified from source.
 (Qwen3-32B = `_rtx` run).
 
 **Main figure:** `rq3_scaling_gap_closure_v2.1_max.png` — split violins, per
-bucket. **Top panel** = Qwen3 (grey = 32B no-skill, blue = 8B skill-v2.1-sys);
-**bottom panel** = Apertus (grey = 70B no-skill, red = 8B skill-v2.1-sys). Median
+bucket. **Top panel** = Apertus (grey = 70B no-skill, red = 8B skill-v2.1-sys);
+**bottom panel** = Qwen3 (grey = 32B no-skill, blue = 8B skill-v2.1-sys). Median
 = horizontal line.
 
 ![RQ3 scaling gap closure](rq3_scaling_gap_closure_v2.1_max.png)
