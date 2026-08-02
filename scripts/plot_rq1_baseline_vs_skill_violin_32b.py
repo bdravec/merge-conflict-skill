@@ -37,7 +37,7 @@ BUCKETS = ["func", "sytx", "sytx+func", "text",
 
 MODEL_NAME  = "Qwen3-32B"
 MODEL_COLOR = "#4575b4"  # same blue as 8B Qwen3
-BASELINE_FNAME = "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl"
+BASELINE_FNAME = "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl"
 SKILL_FNAMES = {  # version -> sys-only results file (names are not uniform)
     "1":   "qwen3-32b_v1_sysonly_clean.jsonl",
     "2":   "qwen3-32b_v2_python_tiny_sysonly_RAW.jsonl",

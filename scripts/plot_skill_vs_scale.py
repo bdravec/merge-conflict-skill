@@ -50,7 +50,7 @@ FIGURES = [
         "out_name": "baseline_scaling_qwen3_v2.1_vs_32b.png",
         "columns": [
             ("Qwen3-8B\n+v2.1 skill", RESULTS_DIR / "pilot_results_qwen3_v2.1_python_tiny.jsonl",            "skill-v2.1-sys"),
-            ("Qwen3-32B\nbaseline",   RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl", "no-skill"),
+            ("Qwen3-32B\nbaseline",   RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl", "no-skill"),
         ],
     },
     {
@@ -61,7 +61,7 @@ FIGURES = [
         "columns": [
             ("Qwen3-8B\nbaseline",    RESULTS_DIR / "pilot_results_qwen3_v2.1_python_tiny.jsonl",            "no-skill"),
             ("Qwen3-8B\n+v2.1 skill", RESULTS_DIR / "pilot_results_qwen3_v2.1_python_tiny.jsonl",            "skill-v2.1-sys"),
-            ("Qwen3-32B\nbaseline",   RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl", "no-skill"),
+            ("Qwen3-32B\nbaseline",   RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl", "no-skill"),
         ],
     },
 ]

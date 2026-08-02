@@ -39,7 +39,7 @@ T_FAIL   = 0.05
 PAIRS = [
     ("Qwen3", "baseline_violin_scaling_qwen3_max.png", [
         ("Qwen3-8B",  "pilot_results_qwen3_baseline_python_tiny.jsonl",        "#91bfdb", "left"),
-        ("Qwen3-32B", "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl", "#2166ac", "right"),
+        ("Qwen3-32B", "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl", "#2166ac", "right"),
     ]),
     ("Apertus", "baseline_violin_scaling_apertus_max.png", [
         ("Apertus-8B",  "pilot_results_apertus_baseline_python_tiny.jsonl", "#f4a582", "left"),
