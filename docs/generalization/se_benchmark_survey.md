@@ -1,8 +1,10 @@
 # SE benchmark survey — beyond merge conflicts
 
-Contributes to [#94](https://github.com/bdravec/merge-conflict-skill/issues/94) **task 1** (survey candidate SE benchmarks) and feeds **task 2** (fit assessment, see [`benchmark_fit.md`](benchmark_fit.md)). See [`README.md`](README.md) for the workstream overview.
+Contributes to [#94](https://github.com/bdravec/merge-conflict-skill/issues/94) **task 1** (survey candidate SE benchmarks) and feeds **task 2** (fit assessment). See [`README.md`](README.md) for the workstream overview and the #94 task→doc map.
 
-The goal is not "which benchmark is best" in the abstract, but **which SE task family is the best second axis for the skill-vs-scale comparison** (cf. [#90](https://github.com/bdravec/merge-conflict-skill/issues/90)/[#91](https://github.com/bdravec/merge-conflict-skill/issues/91)/[#93](https://github.com/bdravec/merge-conflict-skill/issues/93)) given this project's constraints.
+**Context.** The thesis so far evaluates skills on a single SE task (merge-conflict resolution) and finds *skill direction = baseline strength*: the skill helps where the base model is weak (Apertus) and regresses where it is strong (Qwen3). To test whether that claim generalises, we need a **second SE task family**; this doc surveys the candidates.
+
+**Goal.** Not "which benchmark is best" in the abstract, but **which task family is the best second axis for the skill-vs-scale comparison** (cf. [#90](https://github.com/bdravec/merge-conflict-skill/issues/90)/[#91](https://github.com/bdravec/merge-conflict-skill/issues/91)/[#93](https://github.com/bdravec/merge-conflict-skill/issues/93)) given this project's constraints: open models served on a single GPU box via vLLM, an existing `pilot.py` harness, and a deliberately *deterministic* (non-LLM-judge) success metric.
 
 ---
 
@@ -22,7 +24,7 @@ Distilled from issue #94 task 2 and the SkillsBench/Harbor recipe (containerised
 
 ### A. Code generation / creation
 
-| Benchmark | Size | Task | Verifier | Oracle | Container cost | Natural skill? |
+| Benchmark | Size (#instances) | Task | Verifier | Oracle | Container cost | Natural skill? |
 |---|---|---|---|---|---|---|
 | **HumanEval** | 164 | complete a function from docstring | unit tests, `exec` | yes (canonical soln) | none — stdlib only | weak — task is self-contained, little "convention" to encode |
 | **MBPP** (sanitized 427 / full 974) | ~1k | short Python from NL prompt | unit tests, `exec` | yes | none | weak |
@@ -31,7 +33,7 @@ Distilled from issue #94 task 2 and the SkillsBench/Harbor recipe (containerised
 
 ### B. Bug fixing / program repair
 
-| Benchmark | Size | Task | Verifier | Oracle | Container cost | Natural skill? |
+| Benchmark | Size (#instances) | Task | Verifier | Oracle | Container cost | Natural skill? |
 |---|---|---|---|---|---|---|
 | **QuixBugs** | 40 (Py+Java) | fix a single-line bug | unit tests, `exec` | yes | none | moderate |
 | **HumanEvalFix** (HumanEvalPack) | 164 × 6 langs | repair a buggy function | unit tests, `exec` | yes | none — stdlib only | **moderate** — "debugging procedure" is skillable, and it is the cleanest paired buggy/fixed control |
@@ -42,7 +44,7 @@ Distilled from issue #94 task 2 and the SkillsBench/Harbor recipe (containerised
 
 ### C. Vulnerability detection & repair
 
-| Benchmark | Size | Task | Verifier | Oracle | Container cost | Natural skill? |
+| Benchmark | Size (#instances) | Task | Verifier | Oracle | Container cost | Natural skill? |
 |---|---|---|---|---|---|---|
 | **CyberSecEval** (Purple Llama) | large | insecure-code-gen + detection | partly rule/static-analysis, partly LLM-judge | partial | low–medium | strong — security guidance is exactly skill-shaped |
 | **SecurityEval** | 121 | generate code for CWE-prone prompts | static checks (CodeQL etc.) | partial | medium | strong |
@@ -51,7 +53,7 @@ Distilled from issue #94 task 2 and the SkillsBench/Harbor recipe (containerised
 
 ### D. Code review / refactoring / test generation
 
-| Benchmark | Size | Task | Verifier | Oracle | Container cost | Natural skill? |
+| Benchmark | Size (#instances) | Task | Verifier | Oracle | Container cost | Natural skill? |
 |---|---|---|---|---|---|---|
 | **SWT-bench** | ~ SWE-bench scale | generate a *test* that reproduces an issue | does test fail-then-pass on gold patch | yes | very high | strong |
 | **CodeReviewer** (MS) | large | predict review comment / quality | **LLM-judge / BLEU** | reference comment | low | strong, but **no deterministic verifier** |
