@@ -36,18 +36,18 @@ BUCKETS = ["func", "sytx", "sytx+func", "text",
 
 # Each model: (label, baseline file, {version -> sys-only skill file}, colour).
 MODELS = [
-    ("Qwen3-32B",
-     "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",
-     {"1":   "qwen3-32b_v1_sysonly_clean.jsonl",
-      "2":   "qwen3-32b_v2_python_tiny_sysonly_RAW.jsonl",
-      "2.1": "qwen3-32b_v2.1_python_tiny_sysonly_RAW.jsonl"},
-     "#4575b4"),
     ("Apertus-70B",
      "apertus-70b_baseline_python_tiny.jsonl",
      {"1":   "apertus-70b_v1_python_tiny.jsonl",
       "2":   "apertus-70b_v2_python_tiny.jsonl",
       "2.1": "apertus-70b_v2.1_python_tiny.jsonl"},
      "#d6604d"),
+    ("Qwen3-32B",
+     "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",
+     {"1":   "qwen3-32b_v1_sysonly_clean.jsonl",
+      "2":   "qwen3-32b_v2_python_tiny_sysonly_RAW.jsonl",
+      "2.1": "qwen3-32b_v2.1_python_tiny_sysonly_RAW.jsonl"},
+     "#4575b4"),
 ]
 
 BASELINE_COLOR = "#888888"
