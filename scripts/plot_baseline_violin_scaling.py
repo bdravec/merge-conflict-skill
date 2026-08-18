@@ -139,15 +139,19 @@ def plot_pair(family, out_name, pilots):
         f"per bucket (no-skill, python-tiny)\n"
         f"solved % above (>{T_SOLVED});  failed % below (≤{T_FAIL});  "
         f"colour-coded median line per model",
-        fontsize=11, pad=14,
+        fontsize=11, pad=30,
     )
 
+    # Legend sits centred between the title and the plot area (#112). It must be anchored
+    # ABOVE the axes, not inside them: the solved-% labels are drawn at y=1.04 and ylim
+    # runs to 1.18, so an in-axes legend would land on top of them.
     legend_handles = [
         Patch(facecolor=c_small, alpha=0.7, label=f"{pilots[0][0]} (left half)"),
         Patch(facecolor=c_large, alpha=0.7, label=f"{pilots[1][0]} (right half)"),
     ]
-    ax.legend(handles=legend_handles, loc="upper left",
-              bbox_to_anchor=(1.005, 1.0), fontsize=9, frameon=False)
+    ax.legend(handles=legend_handles, loc="lower center",
+              bbox_to_anchor=(0.5, 1.0), ncol=2, columnspacing=2.0,
+              fontsize=9, frameon=False)
 
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
