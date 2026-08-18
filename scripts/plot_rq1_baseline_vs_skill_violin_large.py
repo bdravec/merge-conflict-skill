@@ -153,12 +153,17 @@ def plot_rq1(version: str):
         ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
         ax.set_ylabel(f"{model}\nmax(edit, winnowing)", fontsize=10)
 
+        # Legend centred above each panel, i.e. under the suptitle for the top one (#112).
+        # Per-panel rather than one figure-level legend: the right-half colour differs by
+        # model, so a shared legend could not be colour-correct for both. Anchored above the
+        # axes because the solved-% labels sit inside them at y=1.04 (ylim reaches 1.18).
         legend_handles = [
             Patch(facecolor=BASELINE_COLOR, alpha=0.7, label="baseline (no-skill, left)"),
             Patch(facecolor=model_color,    alpha=0.7, label=f"skill-v{version}-sys (right)"),
         ]
-        ax.legend(handles=legend_handles, loc="upper left",
-                  bbox_to_anchor=(1.005, 1.0), fontsize=8, frameon=False)
+        ax.legend(handles=legend_handles, loc="lower center",
+                  bbox_to_anchor=(0.5, 1.0), ncol=2, columnspacing=2.0,
+                  fontsize=8, frameon=False)
 
         for spine in ("top", "right"):
             ax.spines[spine].set_visible(False)
@@ -171,10 +176,10 @@ def plot_rq1(version: str):
         f"max(edit, winnowing), python-tiny\n"
         f"left half = baseline;  right half = skill-v{version}-sys;  "
         f"solved % above (>{T_SOLVED});  failed % below (≤{T_FAIL})",
-        fontsize=11, y=0.995,
+        fontsize=11, y=1.0,
     )
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.99])  # room for the suptitle above the top legend
     out_path = os.path.join(FIG_DIR, f"rq1_large_baseline_vs_v{version}_sys_max.png")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
