@@ -52,6 +52,11 @@ T_FAIL   = 0.05
 
 VERSION = "2.1"
 
+# 12x7 rather than the 12x6 used elsewhere: these two are stacked as subfigures in
+# one float, and 7 is the tallest that keeps the pair inside a LaTeX float page
+# (9.0 cm per panel at a 15.5 cm textwidth, ~20.9 cm for the pair plus captions).
+FIGSIZE = (12, 7)
+
 # (family, small label, small file, large label, large file, small colour, out name)
 FIGURES = [
     ("Apertus",
@@ -150,7 +155,7 @@ def plot_family(family, small_label, small_file, large_label, large_file,
     data_left  = [left[b]  for b in BUCKETS]
     data_right = [right[b] for b in BUCKETS]
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=FIGSIZE)
 
     render_split(ax, positions, data_left,  "left",  small_color)
     render_split(ax, positions, data_right, "right", BASELINE_COLOR)
