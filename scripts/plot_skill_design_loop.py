@@ -1,7 +1,8 @@
 """
 plot_skill_design_loop.py — the skill-design loop as a two-layer diagram (#117)
 
-Redraw of results_overleaf_figures/skill-design-loop.pdf with the structure fixed:
+Supersedes the hand-drawn skill-design-loop.pdf (commit 2331fa4, removed once this
+replaced it), with the structure fixed:
 
   - the procedure layer is GENERIC. The authored artefact is "SKILL.md vN", not an
     enumeration of versions, so the figure supports the "reusable" claim in its own
