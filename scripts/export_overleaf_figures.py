@@ -24,7 +24,8 @@ Figures exported (4 + 3):
   - baseline_violin_scaling_apertus_max         (plot_baseline_violin_scaling, #84)
   - baseline_violin_scaling_qwen3_max           (plot_baseline_violin_scaling, #84)
 
-  skill-design-loop/ — the v1 -> v2 -> v2.1 loop, one figure per version (#116):
+  skill-design-loop/ — the loop diagram, plus one violin per version (#116, #117):
+  - skill_design_loop                           (plot_skill_design_loop, #117)
   - rq1_baseline_vs_v1_sys_max                  (plot_rq1_baseline_vs_skill_violin, #68)
   - rq1_baseline_vs_v2_sys_max                  (plot_rq1_baseline_vs_skill_violin, #68)
   - rq1_baseline_vs_v2.1_sys_max                (plot_rq1_baseline_vs_skill_violin, #68)
@@ -53,6 +54,7 @@ WANTED = {
     "skill_vs_scale_violin_qwen3_v2.1_vs_32b":   "",
     "baseline_violin_scaling_apertus_max":       "",
     "baseline_violin_scaling_qwen3_max":         "",
+    "skill_design_loop":                         "skill-design-loop",
     "rq1_baseline_vs_v1_sys_max":                "skill-design-loop",
     "rq1_baseline_vs_v2_sys_max":                "skill-design-loop",
     "rq1_baseline_vs_v2.1_sys_max":              "skill-design-loop",
@@ -91,10 +93,12 @@ def main():
         import plot_skill_vs_scale_violin
         import plot_baseline_violin_scaling
         import plot_rq1_baseline_vs_skill_violin
+        import plot_skill_design_loop
 
         plot_skill_vs_scale_violin.main()
         plot_baseline_violin_scaling.main()
         plot_rq1_baseline_vs_skill_violin.main()
+        plot_skill_design_loop.main()
     finally:
         plt.savefig = _orig_savefig
 
