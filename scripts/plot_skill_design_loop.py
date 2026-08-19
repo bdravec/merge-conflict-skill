@@ -64,7 +64,7 @@ STEPS = [
 # Study layer: (x, y, w, h, text) — each sits under the generic step it instantiates.
 INSTANCES = [
     ( 14.0, 56.5, 34.0, 6.5, "ConGra merge-conflict resolution"),
-    ( 14.0, 40.5, 34.0, 6.5, "python/func slice; baseline\n0.395 Qwen3-8B / 0.297 Apertus-8B"),
+    ( 14.0, 40.5, 34.0, 6.5, "python/func slice; baseline\n0.297 Apertus-8B / 0.395 Qwen3-8B"),
     ( 14.0, 24.5, 34.0, 6.5, "Boll et al. (2024):\npick / combine / empty / custom"),
     ( 14.0,  8.5, 34.0, 6.5, "spike — single-case ablation\non 0xe4ff79aa"),
     ( 68.0, 56.5, 34.0, 6.5, "three iterations: v1 → v2 → v2.1"),
