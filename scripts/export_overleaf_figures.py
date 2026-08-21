@@ -18,14 +18,16 @@ It imports the existing plot scripts and tees their savefig calls, so the plotti
 code lives in exactly one place. The originals in docs/figures/ are rewritten
 byte-identically as a side effect.
 
-Figures exported (4 + 3):
+Figures exported (4 + 4):
   - skill_vs_scale_violin_apertus_v2.1_vs_70b   (plot_skill_vs_scale_violin, #114)
   - skill_vs_scale_violin_qwen3_v2.1_vs_32b     (plot_skill_vs_scale_violin, #114)
   - baseline_violin_scaling_apertus_max         (plot_baseline_violin_scaling, #84)
   - baseline_violin_scaling_qwen3_max           (plot_baseline_violin_scaling, #84)
 
-  skill-design-loop/ — the loop diagram, plus one violin per version (#116, #117):
+  skill-design-loop/ — the loop diagram, the version comparison, plus one violin
+  per version (#116, #117, #119):
   - skill_design_loop                           (plot_skill_design_loop, #117)
+  - Key_differences_between_skills_v1_v2_v2_1   (plot_key_differences_between_skills, #119)
   - rq1_baseline_vs_v1_sys_max                  (plot_rq1_baseline_vs_skill_violin, #68)
   - rq1_baseline_vs_v2_sys_max                  (plot_rq1_baseline_vs_skill_violin, #68)
   - rq1_baseline_vs_v2.1_sys_max                (plot_rq1_baseline_vs_skill_violin, #68)
@@ -55,6 +57,7 @@ WANTED = {
     "baseline_violin_scaling_apertus_max":       "",
     "baseline_violin_scaling_qwen3_max":         "",
     "skill_design_loop":                         "skill-design-loop",
+    "Key_differences_between_skills_v1_v2_v2_1":  "skill-design-loop",
     "rq1_baseline_vs_v1_sys_max":                "skill-design-loop",
     "rq1_baseline_vs_v2_sys_max":                "skill-design-loop",
     "rq1_baseline_vs_v2.1_sys_max":              "skill-design-loop",
@@ -94,11 +97,13 @@ def main():
         import plot_baseline_violin_scaling
         import plot_rq1_baseline_vs_skill_violin
         import plot_skill_design_loop
+        import plot_key_differences_between_skills
 
         plot_skill_vs_scale_violin.main()
         plot_baseline_violin_scaling.main()
         plot_rq1_baseline_vs_skill_violin.main()
         plot_skill_design_loop.main()
+        plot_key_differences_between_skills.main()
     finally:
         plt.savefig = _orig_savefig
 
