@@ -6,9 +6,16 @@ shows the artefacts the procedure produced. It reuses that script's design eleme
 (navy containers, black header pills, grey content boxes, orange annotation layer,
 measured centred legend) so the two read as one pair in the chapter.
 
-Scope, following the section split: the figure says what each file CONTAINS, never
-how it scored. Every per-version delta is prose in the findings section, and no
-number here is a result.
+Structure and wording follow Barbara's own draft, uploaded to
+results_overleaf_figures/skill-design-loop/ on 2026-08-21: three blocks per version
+— unique factor, why built, key excerpt — with the excerpt quoted verbatim. The
+colour layers map onto her blocks: grey is what the file specifies, orange is the
+rationale, and the excerpt sits in a plain quote box.
+
+Two departures from that draft, both flagged for her:
+  - sizes are given in WORDS, not lines, matching the section prose (line count is
+    a formatting artefact).
+  - "taxonomy" is replaced by "pattern hierarchy", the one term the chapter uses.
 
 All content is read from the three SKILL.md files under skills/, not from the
 analysis docs:
@@ -35,76 +42,104 @@ from plot_skill_design_loop import (
 
 FIG_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "figures")
 
-# Version columns: (x, version, size). Width 38, gap 8 for the arrow between them.
-COL_W = 38.0
+QUOTE_FC = "#ffffff"
+
+# Version columns: (x, version, size). Width 50, gap 6 for the arrow between them.
+COL_W = 50.0
 COLUMNS = [
-    ( 30.0, "v1",   "277 words"),
-    ( 76.0, "v2",   "742 words"),
-    (122.0, "v2.1", "1102 words"),
+    ( 28.0, "v1 SKILL.md",   "277 words"),
+    ( 84.0, "v2 SKILL.md",   "742 words"),
+    (140.0, "v2.1 SKILL.md", "1102 words"),
 ]
 
-Y_TOP    = 80.0   # container top edge; the header pill straddles it
-Y_BOTTOM = 1.5
-LABEL_X  = 27.0   # row labels are right-aligned here, left of the first column
+Y_TOP    = 78.0   # container top edge; the header pill straddles it
+Y_BOTTOM = 15.0
+LABEL_X  = 25.0   # row labels are right-aligned here, left of the first column
 
-# Compared dimensions: (label, y, h, (v1, v2, v2.1)). Heights follow the tallest
-# cell in the row so the rows stay aligned across all three columns.
+# Her three blocks: (label, y, h, style, (v1, v2, v2.1)). Line breaks are hand-set:
+# a cell is 46 units wide, which holds ~38 characters at the body size.
 ROWS = [
-    ("Resolution choice", 64.0, 9.0, (
-        "four options, no order: keep a side,\ncombine, or write a new resolution",
-        "four patterns in a fixed order:\nempty → combine → pick → custom;\nfirst match decides",
-        "same order; the empty test splits\ninto both sides empty and\none side empty",
+    ("Unique factor", 53.0, 18.0, "spec", (
+        "minimalist: locate the conflict,\n"
+        "read both sides, decide, output.\n"
+        "Four options as a flat list, and\n"
+        "no pattern hierarchy.",
+
+        "a four-pattern hierarchy — empty,\n"
+        "combine, pick, custom — applied as\n"
+        "ordered tests, plus a priority\n"
+        "ladder for pick on symbol\n"
+        "references.",
+
+        "an upfront output-discipline section:\n"
+        "no comments, no surrounding-code\n"
+        "echo, no fabricated identifiers.\n"
+        "The empty test splits so one empty\n"
+        "side becomes pick; custom may use\n"
+        "surrounding-code tokens.",
     )),
-    ("Output discipline", 51.0, 9.0, (
-        "one line in the output format:\nno text outside the code block",
-        "adds a cap of |a| + |b| characters\nand a no-new-identifiers rule",
-        "three rules hoisted above pattern\nselection; the cap becomes a\npost-hoc self-check",
+    ("Why built", 37.0, 12.0, "why", (
+        "establish a baseline prompt: resolve\n"
+        "one conflict block and return only the\n"
+        "resolved file, so later versions have\n"
+        "a control to improve on.",
+
+        "decision-procedure framing — turn the\n"
+        "open-ended choice into a strict ordered\n"
+        "test, so the model defaults to pick and\n"
+        "only escapes to custom when justified.",
+
+        "target the failure modes v2 still\n"
+        "allowed: echoing the surrounding code,\n"
+        "fabricating identifiers, and adding\n"
+        "comments.",
     )),
-    ("Worked examples", 40.0, 7.0, (
-        "none",
-        "three: pick, combine, custom",
-        "five: adds identifier divergence\nand completeness over brevity",
-    )),
-    ("Edge cases", 27.0, 9.0, (
-        "none",
-        "five, at the end of the file",
-        "five: one side empty moves into the\npattern test; file-level resolutions\nadded",
-    )),
-    ("Custom resolutions", 16.0, 7.0, (
-        "unconstrained: write a new resolution",
-        "only tokens already present on\nside a or side b",
-        "surrounding-code tokens allowed\nas a secondary source",
+    ("Key excerpt", 19.0, 14.0, "quote", (
+        "Determine the correct resolution.\n"
+        "Choose one of: Keep branch A's changes /\n"
+        "Keep branch B's / Combine both / Write a\n"
+        "new resolution.",
+
+        "There are four patterns: empty, combine,\n"
+        "pick, custom. Apply the following tests\n"
+        "in order — the first match decides. … Do\n"
+        "not jump to custom. Most conflicts are\n"
+        "pick.",
+
+        "No comments in the code block … No\n"
+        "surrounding-code echo. Do not copy lines\n"
+        "from the surrounding code into the\n"
+        "resolution … No fabricated identifiers.",
     )),
 ]
 
-# The orange layer: what each version is, in one line. v1 has nothing to change
-# against, so its entry records that it is the starting point.
-SUMMARIES = (
-    "the control: deliberately generic,\nthe starting point for the loop",
-    "rewrite around the pattern hierarchy\nand output discipline",
-    "revision: discipline moved first,\nthe cap replaced by checkable rules",
-)
-SUMMARY_Y, SUMMARY_H = 5.0, 7.0
+# (facecolor, edgecolor, textcolor, fontsize, extra text kwargs) per row style.
+STYLES = {
+    "spec":  (STEP_FC, STEP_EC, INK,     8.4, {}),
+    "why":   (INST_FC, INST_EC, INST_TX, 7.6, {}),
+    "quote": (QUOTE_FC, STEP_EC, INK,    7.6, {"family": "monospace", "style": "italic"}),
+}
 
 LEGEND = [
-    (STEP_FC, STEP_EC, INK,     "what the file specifies"),
-    (INST_FC, INST_EC, INST_TX, "what changed in this version"),
+    (STEP_FC, STEP_EC, INK,     "what the version specifies"),
+    (INST_FC, INST_EC, INST_TX, "why it was built that way"),
+    (QUOTE_FC, STEP_EC, INK,    "quoted verbatim from the file"),
 ]
 
 
 def header_pill(fig, ax, x, version, size):
     """Black pill straddling the container's top edge: bold version, then size.
 
-    Width follows the rendered text, since "v2.1" is wider than "v1".
+    Width follows the rendered text, since "v2.1 SKILL.md" is wider than "v1".
     """
-    w_ver  = text_widths(fig, ax, [version], 13.0, fontweight="bold")[0]
-    w_size = text_widths(fig, ax, [size], 10.5)[0]
+    w_ver  = text_widths(fig, ax, [version], 11.5, fontweight="bold")[0]
+    w_size = text_widths(fig, ax, [size], 9.5)[0]
 
     pad, gap = 3.0, 2.4
     rbox(ax, x + 1.5, Y_TOP - 3.0, pad * 2 + w_ver + gap + w_size, 6.0, INK, INK)
-    ax.text(x + 1.5 + pad, Y_TOP, version, fontsize=13, fontweight="bold",
+    ax.text(x + 1.5 + pad, Y_TOP, version, fontsize=11.5, fontweight="bold",
             color="white", ha="left", va="center", zorder=4)
-    ax.text(x + 1.5 + pad + w_ver + gap, Y_TOP, size, fontsize=10.5,
+    ax.text(x + 1.5 + pad + w_ver + gap, Y_TOP, size, fontsize=9.5,
             color="white", ha="left", va="center", zorder=4)
 
 
@@ -113,28 +148,24 @@ def draw(fig, ax):
         rbox(ax, x, Y_BOTTOM, COL_W, Y_TOP - Y_BOTTOM, "none", NAVY, lw=1.4)
         header_pill(fig, ax, x, version, size)
 
-    # The loop is left to right, same as the procedure figure.
+    # The versions run left to right, same direction as the procedure figure.
     for (x_from, *_), (x_to, *_) in zip(COLUMNS, COLUMNS[1:]):
-        connect(ax, [(x_from + COL_W, 42.0), (x_to, 42.0)])
+        connect(ax, [(x_from + COL_W, 46.5), (x_to, 46.5)])
 
-    for label, y, h, cells in ROWS:
+    for label, y, h, style, cells in ROWS:
+        fc, ec, tc, fs, kwargs = STYLES[style]
         ax.text(LABEL_X, y + h / 2, label, fontsize=9.2, fontweight="bold",
                 color=INK, ha="right", va="center", zorder=4)
         for (x, *_), text in zip(COLUMNS, cells):
-            rbox(ax, x + 2.0, y, COL_W - 4.0, h, STEP_FC, STEP_EC)
-            ax.text(x + COL_W / 2, y + h / 2, text, fontsize=8.4, color=INK,
-                    ha="center", va="center", linespacing=1.35, zorder=4)
-
-    for (x, *_), text in zip(COLUMNS, SUMMARIES):
-        rbox(ax, x + 2.0, SUMMARY_Y, COL_W - 4.0, SUMMARY_H, INST_FC, INST_EC, lw=1.0)
-        ax.text(x + COL_W / 2, SUMMARY_Y + SUMMARY_H / 2, text, fontsize=7.6,
-                color=INST_TX, ha="center", va="center", linespacing=1.35, zorder=4)
+            rbox(ax, x + 2.0, y, COL_W - 4.0, h, fc, ec, lw=1.0)
+            ax.text(x + COL_W / 2, y + h / 2, text, fontsize=fs, color=tc,
+                    ha="center", va="center", linespacing=1.35, zorder=4, **kwargs)
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(15.0, 9.6))
-    ax.set_xlim(0, 164)
-    ax.set_ylim(0, 97)
+    fig, ax = plt.subplots(figsize=(15.0, 6.4))
+    ax.set_xlim(0, 190)
+    ax.set_ylim(13, 93)
     ax.set_aspect("equal")
     ax.axis("off")
 
@@ -143,9 +174,9 @@ def main():
     label_w = max(text_widths(fig, ax, [r[0] for r in ROWS], 9.2, fontweight="bold"))
     center = ((LABEL_X - label_w) + (COLUMNS[-1][0] + COL_W)) / 2
 
-    ax.text(center, 93.5, "Key differences between the merge-conflict skills",
+    ax.text(center, 91.0, "Key differences between skill v1, v2, v2.1",
             fontsize=19, fontweight="bold", color=INK, ha="center", va="center")
-    draw_legend(fig, ax, y=87.5, entries=LEGEND, center=center)
+    draw_legend(fig, ax, y=85.5, entries=LEGEND, center=center, gap=6.0)
 
     draw(fig, ax)
 
