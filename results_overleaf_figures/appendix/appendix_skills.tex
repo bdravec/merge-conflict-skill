@@ -1,0 +1,79 @@
+% ---------------------------------------------------------------------------
+% Appendix: the five SKILL.md files, verbatim.
+%
+% Upload this file AND the skills/ folder next to it, then \input this once.
+% The \lstinputlisting paths resolve from the PROJECT ROOT, not from wherever this
+% file sits, so skills/ has to be at the top level of the Overleaf project even if
+% this .tex lives in a subfolder.
+% The .md files are pulled in with \lstinputlisting rather than pasted, so the
+% thesis can never hold a copy that has drifted from the repo. Refresh them with
+%   python3 scripts/collect_skill_files.py
+%
+% Needs only listings + xcolor, both already loaded.
+%
+% Two things this style is working around, both real:
+%   - the preamble renames \lstlistingname to "Algorithmus", so every listing
+%     here uses title= rather than caption=; a captioned listing would print
+%     "Algorithmus N" in an English thesis and appear in the list of listings,
+%     where a 173-line skill file does not belong.
+%   - the files contain 50 em dashes, 9 right arrows and 2 en dashes, which
+%     listings cannot typeset under the deprecated utf8x inputenc. The literate
+%     mapping below handles them inside the style, leaving the preamble alone.
+% breaklines and postbreak are not optional: the longest line in
+% secure-coding-v1 is 525 columns.
+% ---------------------------------------------------------------------------
+
+\lstdefinestyle{skillmd}{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true, columns=fullflexible, keepspaces=true,
+  showstringspaces=false, frame=single, framesep=4pt,
+  rulecolor=\color{black!30}, xleftmargin=12pt,
+  aboveskip=1.2em, belowskip=0.6em,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  literate={—}{{-{}-{}-}}3 {–}{{-{}-}}2 {→}{{$\rightarrow$}}1
+}
+
+\section{The skill files}
+\label{app:skills}
+
+The five \texttt{SKILL.md} files used in this thesis are reproduced verbatim
+below. The three merge-conflict versions are the successive outputs of the design
+loop described in Section~\ref{sec:loop_procedure}; the two benchmark skills were
+each written in a single version. Where a line is too long for the page it is
+broken and marked with $\hookrightarrow$; that arrow is typesetting, not part of
+the file.
+
+\subsection{merge-conflict-resolve-v1}
+
+The control, 277 words: a four-way choice between keeping either side, combining
+them, and writing a new resolution, with no worked examples and no edge cases.
+
+\lstinputlisting[style=skillmd]{skills/merge-conflict-resolve-v1.md}
+
+\subsection{merge-conflict-resolve-v2}
+
+742 words. Adds the ordered pattern hierarchy and the output discipline v1
+lacked, including the cap of $|a| + |b|$ characters.
+
+\lstinputlisting[style=skillmd]{skills/merge-conflict-resolve-v2.md}
+
+\subsection{merge-conflict-resolve-v2.1}
+
+1102 words. Moves the output discipline ahead of the pattern hierarchy, replaces
+the character cap with content rules and a post-hoc self-check, and hoists the
+one-side-empty rule into the pattern test itself.
+
+\lstinputlisting[style=skillmd]{skills/merge-conflict-resolve-v2.1.md}
+
+\subsection{secure-coding-v1}
+
+The SALLM skill, 1677 words. Written in a single version: it inherits the
+conclusions of the merge-conflict loop without having been iterated on itself.
+
+\lstinputlisting[style=skillmd]{skills/secure-coding-v1.md}
+
+\subsection{swebench-repair-v1}
+
+The SWE-bench Lite skill, 501 words, single-version on the same basis.
+
+\lstinputlisting[style=skillmd]{skills/swebench-repair-v1.md}

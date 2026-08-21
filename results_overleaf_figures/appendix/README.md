@@ -1,10 +1,38 @@
-# Appendix material — worked conflict examples
+# Appendix material
+
+Two independent appendix pieces. Take either or both.
+
+## 1. The five SKILL.md files (#118 section 1)
+
+Upload `appendix_skills.tex` **and the `skills/` folder**, then `\input{appendix_skills}`.
+The `.md` files are pulled in with `\lstinputlisting` rather than pasted, so the
+thesis cannot hold a copy that has drifted from the repo. Refresh them with:
+
+```
+python3 scripts/collect_skill_files.py
+```
+
+That script exists because the five files live in **two repos** — the three
+merge-conflict versions here, `secure-coding-v1` and `swebench-repair-v1` in the
+sibling `swe-skills-benchmarks` checkout — and because five files all named
+`SKILL.md` cannot share one directory, so they are renamed on the way in.
+
+⚠️ `\lstinputlisting` paths resolve from the **project root**, not from the folder
+holding the `.tex`. `skills/` has to sit at the top level of the Overleaf project.
+
+Label: `app:skills`. Referenced from §3.2's closing paragraph.
+
+## 2. Worked conflict examples (#118 section 2)
 
 Paste-ready LaTeX fragments, one per ConGra conflict cited by ID in the
 skill-design sections. Upload the `.tex` files to Overleaf and `\input` them
 where the appendix entry belongs.
 
-**Upload all five files and add one `\input{appendix_cases}` to the thesis.**
+**Simplest route: paste `appendix_cases_standalone.tex` and reference `\ref{app:cases}`.**
+It is self-contained — style, heading, explanations and listings in one file.
+
+The split version below exists only so the generated fragments can be regenerated
+without touching the prose; it is the same content via `\input{appendix_cases}`.
 `appendix_cases.tex` is the only hand-written file: it carries the appendix heading
 and the explanation of each case, then `\input`s the three generated fragments.
 The section body references the appendix once, via `\ref{app:cases}`; no case is
