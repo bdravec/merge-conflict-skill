@@ -78,6 +78,15 @@ INSTANCES = [
 DIAMOND = (79.0, -4.0)
 DIAMOND_HW, DIAMOND_HH = 17.0, 5.4
 
+# Horizontal centre of the canvas: the stage containers span x = 3 to x = 150.
+CENTER = 76.5
+
+# Legend entries: (facecolor, edgecolor, textcolor, label).
+LEGEND = [
+    (STEP_FC, STEP_EC, INK,     "generic step — the reusable procedure"),
+    (INST_FC, INST_EC, INST_TX, "how this study instantiated it"),
+]
+
 
 def rbox(ax, x, y, w, h, fc, ec, lw=1.1):
     ax.add_patch(FancyBboxPatch(
@@ -99,6 +108,42 @@ def edge_label(ax, x, y, text, rotation=0):
     ax.text(x, y, text, fontsize=8.4, style="italic", color=ARROW,
             ha="center", va="center", rotation=rotation, zorder=4,
             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none"))
+
+
+def text_widths(fig, ax, labels, fontsize, **kwargs):
+    """Rendered width of each label, in data units.
+
+    Measured from the renderer rather than estimated from the character count, so
+    layouts built on these stay put when a label is reworded.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    to_data = ax.transData.inverted()
+
+    widths = []
+    for label in labels:
+        probe = ax.text(0, 0, label, fontsize=fontsize, **kwargs)
+        widths.append(probe.get_window_extent(renderer=renderer)
+                      .transformed(to_data).width)
+        probe.remove()
+    return widths
+
+
+def draw_legend(fig, ax, y, entries, center, fontsize=9.2, sw=3.4, pad=1.6, gap=7.0):
+    """Swatch + label pairs in one row, centred as a group on `center`.
+
+    Shared with the other figures in this chapter so the legend reads identically
+    across them; `entries` are (facecolor, edgecolor, textcolor, label) tuples.
+    """
+    widths = text_widths(fig, ax, [e[3] for e in entries], fontsize)
+
+    total = sum(sw + pad + w for w in widths) + gap * (len(entries) - 1)
+    x = center - total / 2
+    for (fc, ec, tc, label), w in zip(entries, widths):
+        rbox(ax, x, y - sw / 2, sw, sw, fc, ec)
+        ax.text(x + sw + pad, y, label, fontsize=fontsize, color=tc,
+                ha="left", va="center")
+        x += sw + pad + w + gap
 
 
 def draw(ax):
@@ -164,19 +209,15 @@ def draw(ax):
 def main():
     fig, ax = plt.subplots(figsize=(15.0, 10.0))
     ax.set_xlim(0, 153)
-    ax.set_ylim(-18, 92)
+    ax.set_ylim(-18, 93)
     ax.set_aspect("equal")
     ax.axis("off")
 
-    ax.text(76.0, 87.0, "A reusable SKILL-design-loop", fontsize=19,
+    ax.text(CENTER, 89.5, "A reusable SKILL-design-loop", fontsize=19,
             fontweight="bold", color=INK, ha="center", va="center")
 
-    rbox(ax, 33.0, 79.0, 3.4, 3.4, STEP_FC, STEP_EC)
-    ax.text(38.0, 80.7, "generic step — the reusable procedure", fontsize=9.2,
-            color=INK, ha="left", va="center")
-    rbox(ax, 86.0, 79.0, 3.4, 3.4, INST_FC, INST_EC)
-    ax.text(91.0, 80.7, "how this study instantiated it", fontsize=9.2,
-            color=INST_TX, ha="left", va="center")
+    # y = 83 clears the stage header pills, which top out at y = 79.
+    draw_legend(fig, ax, y=83.0, entries=LEGEND, center=CENTER)
 
     draw(ax)
 
