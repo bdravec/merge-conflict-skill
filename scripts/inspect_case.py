@@ -112,6 +112,13 @@ LISTING_STYLE = r"""% Listing style for the worked conflict examples.
 % out of the list of listings, where they do not belong.
 %
 % Needs only listings + xcolor, both already loaded.
+%
+% The {<} {>} {-} mappings are not cosmetic (#124). columns=fullflexible lets TeX
+% form ligatures between adjacent characters, and under T1 the typewriter font maps
+% << to a left guillemet and >> to a right one -- which would turn every conflict
+% marker in the appendix into <<<< and >>>>. Mapping each character to itself puts
+% it in its own box so no ligature can form; width 1 keeps the columns aligned.
+% It is a no-op if the font has no such ligature, so it is safe either way.
 \lstdefinestyle{conflictcode}{
   basicstyle=\ttfamily\footnotesize,
   breaklines=true, columns=fullflexible, keepspaces=true,
@@ -120,6 +127,7 @@ LISTING_STYLE = r"""% Listing style for the worked conflict examples.
   aboveskip=1.2em, belowskip=0.6em,
   postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
   literate={—}{{-{}-{}-}}3 {–}{{-{}-}}2 {→}{{$\rightarrow$}}1 {…}{{\ldots}}1
+           {<}{{<}}1 {>}{{>}}1 {-}{{-}}1
 }
 """
 
