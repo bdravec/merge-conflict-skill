@@ -52,10 +52,13 @@ T_FAIL   = 0.05
 
 VERSION = "2.1"
 
-# 12x7 rather than the 12x6 used elsewhere: these two are stacked as subfigures in
-# one float, and 7 is the tallest that keeps the pair inside a LaTeX float page
-# (9.0 cm per panel at a 15.5 cm textwidth, ~20.9 cm for the pair plus captions).
-FIGSIZE = (12, 7)
+# 12x6, matching every other single-panel violin script (#122). These figures sit
+# next to the baseline-scaling pair (plot_baseline_violin_scaling.py) in the thesis;
+# at width=\textwidth a taller canvas gave their violins ~17% more vertical room, so
+# the baseline pair read as squeezed by comparison. The earlier 12x7 was chosen as
+# "the tallest that keeps a stacked pair inside a LaTeX float page" -- a ceiling, not
+# a target. 6 fits that float just as well and keeps all four PDFs the same size.
+FIGSIZE = (12, 6)
 
 # (family, small label, small file, large label, large file, small colour, out name)
 FIGURES = [

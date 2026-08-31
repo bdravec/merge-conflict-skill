@@ -16,7 +16,7 @@ trend at a glance.
 
 Usage:
     python scripts/analyze_skill_versions.py \
-        --baseline scripts/results/pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl \
+        --baseline scripts/results/pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl \
         --version v1=scripts/results/qwen3-32b_v1_sysonly_clean.jsonl \
         --version v2=scripts/results/qwen3-32b_v2_python_tiny_sysonly_RAW.jsonl \
         --version v2.1=scripts/results/qwen3-32b_v2.1_python_tiny_sys.jsonl
