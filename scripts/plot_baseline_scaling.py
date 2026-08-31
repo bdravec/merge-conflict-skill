@@ -31,7 +31,7 @@ FIGURES_DIR = REPO_ROOT / "docs" / "figures" / "baseline_diagrams"
 
 FILES = {
     "Qwen3-8B":   RESULTS_DIR / "pilot_results_qwen3_baseline_python_tiny.jsonl",
-    "Qwen3-32B":  RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_32b.jsonl",
+    "Qwen3-32B":  RESULTS_DIR / "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",
     "Apertus-8B": RESULTS_DIR / "pilot_results_apertus_baseline_python_tiny.jsonl",
     "Apertus-70B":RESULTS_DIR / "apertus-70b_baseline_python_tiny.jsonl",
 }
