@@ -34,9 +34,20 @@ BUCKETS = ["func", "sytx", "sytx+func", "text",
 T_SOLVED = 0.8
 T_FAIL   = 0.05
 
-# 0.8 rather than 0.7, matching the other violin scripts (#123). Colours here are
-# unchanged -- this file is where the two baseline hexes came from.
+# 0.8 rather than 0.7, matching the other violin scripts (#123). Fills here are
+# unchanged -- this file is where all four model hexes came from. Both series are
+# no-skill, so neither half is hatched.
 FILL_ALPHA = 0.8
+
+# Fill darkened x0.55, for the median bar and the number labels. The two light fills
+# score ~2:1 against white; this figure used them directly as bold text colour, putting
+# the solved/failed percentages far under the 4.5:1 minimum. All four inks clear it.
+INK = {
+    "Apertus-8B":  "#865b48",
+    "Apertus-70B": "#620d18",
+    "Qwen3-8B":    "#506978",
+    "Qwen3-32B":   "#12385f",
+}
 
 # Each pair: (family_title, out_name, [(label, fname, color, side), ...])
 # Same hue per family, light = small / dark = large.
@@ -113,10 +124,12 @@ def plot_pair(family, out_name, pilots):
                     seg[0, 0] = x_center
                 clipped.append(seg)
             parts["cmedians"].set_segments(clipped)
-            parts["cmedians"].set_color(color)
+            parts["cmedians"].set_color(INK[label])
             parts["cmedians"].set_linewidth(2.0)
 
-    c_small, c_large = pilots[0][2], pilots[1][2]
+    # ink for the number labels, fill for the legend swatches
+    c_small, c_large = INK[pilots[0][0]], INK[pilots[1][0]]
+    f_small, f_large = pilots[0][2], pilots[1][2]
     for x in positions:
         ax.text(x - 0.22, 1.04, f"{per_model_solved[0][x]:.1f}%",
                 ha="center", va="bottom", fontsize=8, color=c_small, fontweight="bold")
@@ -150,8 +163,8 @@ def plot_pair(family, out_name, pilots):
     # ABOVE the axes, not inside them: the solved-% labels are drawn at y=1.04 and ylim
     # runs to 1.18, so an in-axes legend would land on top of them.
     legend_handles = [
-        Patch(facecolor=c_small, alpha=FILL_ALPHA, label=f"{pilots[0][0]} (left half)"),
-        Patch(facecolor=c_large, alpha=FILL_ALPHA, label=f"{pilots[1][0]} (right half)"),
+        Patch(facecolor=f_small, alpha=FILL_ALPHA, label=f"{pilots[0][0]} (left half)"),
+        Patch(facecolor=f_large, alpha=FILL_ALPHA, label=f"{pilots[1][0]} (right half)"),
     ]
     ax.legend(handles=legend_handles, loc="lower center",
               bbox_to_anchor=(0.5, 1.0), ncol=2, columnspacing=2.0,

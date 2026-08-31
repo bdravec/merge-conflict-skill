@@ -43,21 +43,32 @@ FIG_DIR     = os.path.join(os.path.dirname(__file__), "..", "docs", "figures",
 BUCKETS = ["func", "sytx", "sytx+func", "text",
            "text+func", "text+sytx", "text+sytx+func"]
 
-# Per-series palette (#123). Colour follows the SERIES, not its role in a given
-# figure, so the same model+condition is the same colour in every diagram:
-#   Apertus-8B + skill  = magenta   Apertus-70B baseline = #b2182b
-#   Qwen3-8B   + skill  = cyan      Qwen3-32B   baseline = #2166ac
-# The two baseline hexes are the ones plot_baseline_violin_scaling.py already used.
-QWEN_SKILL_COLOR    = "#00b8d4"   # cyan
-APERTUS_SKILL_COLOR = "#d926c9"   # magenta
-QWEN_32B_COLOR      = "#2166ac"
-APERTUS_70B_COLOR   = "#b2182b"
+# Palette (#123). TWO ORTHOGONAL ENCODINGS, each doing one job:
+#   COLOUR = the MODEL   (same model = same fill in every figure)
+#   HATCH  = the SKILL   (solid = no-skill, "///" = + skill)
+# So Apertus-8B is #f4a582 whether or not it carries the skill; only the hatch moves.
+#
+# INK is the fill darkened x0.55, used for the hatch lines, the median bar and the
+# number labels. It is not decoration: the light fills score 1.99:1 and 1.97:1 against
+# white, so using them as text colour (as these figures did before) put the solved/failed
+# percentages far under the 4.5:1 minimum. At x0.55 all four inks clear it (5.8-13.2:1),
+# and the darker hatch lines are what make "+ skill" legible where both halves share a fill.
+FILL = {
+    "Apertus-8B":  "#f4a582",
+    "Apertus-70B": "#b2182b",
+    "Qwen3-8B":    "#91bfdb",
+    "Qwen3-32B":   "#2166ac",
+}
+INK = {
+    "Apertus-8B":  "#865b48",
+    "Apertus-70B": "#620d18",
+    "Qwen3-8B":    "#506978",
+    "Qwen3-32B":   "#12385f",
+}
+SKILL_HATCH = "///"
 
-# Fills are drawn at 0.8, not 0.7 (#123). At 0.7 the ~30% white blend collapsed the
-# hue separation of the two same-family pairings this palette creates -- magenta beside
-# red, cyan beside blue -- to OKLab dE 12.0 and 15.3, under the 15 normal-vision floor.
-# 0.8 restores them to 19.4 and 17.7. The halves never overlap, so the transparency was
-# only softening the fill, never compositing.
+# Fills at 0.8 rather than 0.7: the 30% white blend at 0.7 washed out both the fills
+# and the hatch lines. The halves never overlap, so alpha only softens, never composites.
 FILL_ALPHA = 0.8
 
 T_SOLVED = 0.8
@@ -73,18 +84,16 @@ VERSION = "2.1"
 # a target. 6 fits that float just as well and keeps all four PDFs the same size.
 FIGSIZE = (12, 6)
 
-# (family, small label, small file, large label, large file, small colour,
-#  large colour, out name)
+# (family, small label, small file, small model key,
+#  large label, large file, large model key, out name)
 FIGURES = [
     ("Apertus",
-     "Apertus-8B",  "pilot_results_apertus_v2.1_python_tiny.jsonl",
-     "Apertus-70B", "apertus-70b_baseline_python_tiny.jsonl",
-     APERTUS_SKILL_COLOR, APERTUS_70B_COLOR,
+     "Apertus-8B",  "pilot_results_apertus_v2.1_python_tiny.jsonl",  "Apertus-8B",
+     "Apertus-70B", "apertus-70b_baseline_python_tiny.jsonl",        "Apertus-70B",
      "skill_vs_scale_violin_apertus_v2.1_vs_70b.png"),
     ("Qwen3",
-     "Qwen3-8B",  "pilot_results_qwen3_v2.1_python_tiny.jsonl",
-     "Qwen3-32B", "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",
-     QWEN_SKILL_COLOR, QWEN_32B_COLOR,
+     "Qwen3-8B",  "pilot_results_qwen3_v2.1_python_tiny.jsonl",                "Qwen3-8B",
+     "Qwen3-32B", "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",    "Qwen3-32B",
      "skill_vs_scale_violin_qwen3_v2.1_vs_32b.png"),
 ]
 
@@ -115,7 +124,10 @@ def load_max_scores(jsonl_path, condition_filter=None):
     return out
 
 
-def render_split(ax, positions, data, side, color):
+def render_split(ax, positions, data, side, color, ink=None, hatch=None):
+    """One half-violin per bucket. `ink` colours the median bar and the hatch
+    lines; `hatch` marks the + skill condition."""
+    ink = ink or color
     parts = ax.violinplot(data, positions=positions, widths=0.9,
                           showmedians=True, showextrema=False)
     for body, x_center in zip(parts["bodies"], positions):
@@ -125,9 +137,14 @@ def render_split(ax, positions, data, side, color):
         else:
             verts[:, 0] = np.maximum(verts[:, 0], x_center)
         body.set_facecolor(color)
-        body.set_edgecolor(color)
         body.set_alpha(FILL_ALPHA)
-        body.set_linewidth(1.0)
+        if hatch:
+            body.set_hatch(hatch)
+            body.set_edgecolor(ink)      # hatch lines take the edge colour
+            body.set_linewidth(0.6)
+        else:
+            body.set_edgecolor(color)
+            body.set_linewidth(1.0)
     if "cmedians" in parts:
         segs = parts["cmedians"].get_segments()
         clipped = []
@@ -139,7 +156,7 @@ def render_split(ax, positions, data, side, color):
                 seg[0, 0] = x_center
             clipped.append(seg)
         parts["cmedians"].set_segments(clipped)
-        parts["cmedians"].set_color(color)
+        parts["cmedians"].set_color(ink)
         parts["cmedians"].set_linewidth(2.0)
 
 
@@ -163,8 +180,8 @@ def annotate_halves(ax, positions, data_left, data_right, color_left, color_righ
                 fontsize=6.5, color="#777")
 
 
-def plot_family(family, small_label, small_file, large_label, large_file,
-                small_color, large_color, out_name):
+def plot_family(family, small_label, small_file, small_key,
+                large_label, large_file, large_key, out_name):
     positions = list(range(len(BUCKETS)))
 
     left  = load_max_scores(os.path.join(RESULTS_DIR, small_file),
@@ -176,9 +193,11 @@ def plot_family(family, small_label, small_file, large_label, large_file,
 
     fig, ax = plt.subplots(figsize=FIGSIZE)
 
-    render_split(ax, positions, data_left,  "left",  small_color)
-    render_split(ax, positions, data_right, "right", large_color)
-    annotate_halves(ax, positions, data_left, data_right, small_color, large_color)
+    # left = the small model WITH the skill -> hatched; right = the large no-skill baseline.
+    render_split(ax, positions, data_left,  "left",  FILL[small_key],
+                 ink=INK[small_key], hatch=SKILL_HATCH)
+    render_split(ax, positions, data_right, "right", FILL[large_key], ink=INK[large_key])
+    annotate_halves(ax, positions, data_left, data_right, INK[small_key], INK[large_key])
 
     ax.axhline(T_SOLVED, color="#1a9850", linestyle=":", linewidth=0.8, alpha=0.5)
     ax.axhline(T_FAIL,   color="#b2182b", linestyle=":", linewidth=0.8, alpha=0.5)
@@ -201,9 +220,10 @@ def plot_family(family, small_label, small_file, large_label, large_file,
     # the axes, not inside them: the solved-% labels sit at y=1.04 and ylim
     # reaches 1.18, so an in-axes legend would land on top of them.
     legend_handles = [
-        Patch(facecolor=small_color,    alpha=FILL_ALPHA,
+        Patch(facecolor=FILL[small_key], alpha=FILL_ALPHA, hatch=SKILL_HATCH,
+              edgecolor=INK[small_key],
               label=f"{small_label} + skill-v{VERSION}-sys (left half)"),
-        Patch(facecolor=large_color,    alpha=FILL_ALPHA,
+        Patch(facecolor=FILL[large_key], alpha=FILL_ALPHA, edgecolor=FILL[large_key],
               label=f"{large_label} no-skill (right half)"),
     ]
     ax.legend(handles=legend_handles, loc="lower center",

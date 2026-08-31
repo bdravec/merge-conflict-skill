@@ -35,21 +35,27 @@ BUCKETS = ["func", "sytx", "sytx+func", "text",
 MODELS = [
     ("Apertus-8B",
      "pilot_results_apertus_baseline_python_tiny.jsonl",
-     "pilot_results_apertus_v{ver}_python_tiny.jsonl",
-     "#d926c9"),   # magenta: Apertus-8B + skill (#123)
+     "pilot_results_apertus_v{ver}_python_tiny.jsonl"),
     ("Qwen3-8B",
      "pilot_results_qwen3_baseline_python_tiny.jsonl",
-     "pilot_results_qwen3_v{ver}_python_tiny.jsonl",
-     "#00b8d4"),   # cyan: Qwen3-8B + skill (#123)
+     "pilot_results_qwen3_v{ver}_python_tiny.jsonl"),
 ]
 
-BASELINE_COLOR = "#888888"
+# Palette (#123). TWO ORTHOGONAL ENCODINGS, each doing one job:
+#   COLOUR = the MODEL   (same model = same fill in every figure)
+#   HATCH  = the SKILL   (solid = no-skill, "///" = + skill)
+# Here BOTH halves are the same model, so they share a fill and the hatch alone
+# separates them -- that is the point: it shows one model under two conditions.
+#
+# INK is the fill darkened x0.55, for hatch lines, median bar and number labels. The
+# light fills score ~2:1 against white; using them as text colour (as this figure did)
+# put the percentages far under the 4.5:1 minimum. At x0.55 all inks clear it.
+FILL = {"Apertus-8B": "#f4a582", "Qwen3-8B": "#91bfdb"}
+INK  = {"Apertus-8B": "#865b48", "Qwen3-8B": "#506978"}
+SKILL_HATCH = "///"
 
-# 0.8 rather than 0.7, matching plot_skill_vs_scale_violin.py (#123): the white blend
-# at 0.7 washed out the new magenta/cyan fills.
-# NOTE: cyan against this grey is OKLab dE 13.4, under the 15 normal-vision floor
-# (CVD 8.6 clears the 8 floor). Acceptable here only because the split violin encodes
-# identity by left/right position as well, and the legend names the halves.
+# 0.8 rather than 0.7, matching the other violin scripts: the white blend at 0.7
+# washed out the hatch lines, which here are the only thing separating the halves.
 FILL_ALPHA = 0.8
 
 T_SOLVED = 0.8
@@ -76,7 +82,10 @@ def load_max_scores(jsonl_path: str, condition_filter: str | None = None) -> dic
     return out
 
 
-def render_split(ax, positions, data, side: str, color: str):
+def render_split(ax, positions, data, side: str, color: str, ink=None, hatch=None):
+    """One half-violin per bucket. `ink` colours the median bar and the hatch lines;
+    `hatch` marks the + skill condition."""
+    ink = ink or color
     parts = ax.violinplot(data, positions=positions, widths=0.9,
                           showmedians=True, showextrema=False)
     for body, x_center in zip(parts["bodies"], positions):
@@ -86,9 +95,14 @@ def render_split(ax, positions, data, side: str, color: str):
         else:
             verts[:, 0] = np.maximum(verts[:, 0], x_center)
         body.set_facecolor(color)
-        body.set_edgecolor(color)
         body.set_alpha(FILL_ALPHA)
-        body.set_linewidth(1.0)
+        if hatch:
+            body.set_hatch(hatch)
+            body.set_edgecolor(ink)
+            body.set_linewidth(0.6)
+        else:
+            body.set_edgecolor(color)
+            body.set_linewidth(1.0)
     if "cmedians" in parts:
         segs = parts["cmedians"].get_segments()
         clipped = []
@@ -100,7 +114,7 @@ def render_split(ax, positions, data, side: str, color: str):
                 seg[0, 0] = x_center
             clipped.append(seg)
         parts["cmedians"].set_segments(clipped)
-        parts["cmedians"].set_color(color)
+        parts["cmedians"].set_color(ink)
         parts["cmedians"].set_linewidth(2.0)
 
 
@@ -128,7 +142,7 @@ def plot_rq1(version: str):
     positions = list(range(len(BUCKETS)))
     fig, axes = plt.subplots(2, 1, figsize=(12, 11), sharex=True)
 
-    for ax, (model, baseline_fname, skill_fname_tpl, model_color) in zip(axes, MODELS):
+    for ax, (model, baseline_fname, skill_fname_tpl) in zip(axes, MODELS):
         baseline = load_max_scores(os.path.join(RESULTS_DIR, baseline_fname))
         skill    = load_max_scores(
             os.path.join(RESULTS_DIR, skill_fname_tpl.format(ver=version)),
@@ -138,9 +152,11 @@ def plot_rq1(version: str):
         data_left  = [baseline[b] for b in BUCKETS]
         data_right = [skill[b]    for b in BUCKETS]
 
-        render_split(ax, positions, data_left,  "left",  BASELINE_COLOR)
-        render_split(ax, positions, data_right, "right", model_color)
-        annotate_halves(ax, positions, data_left, data_right, BASELINE_COLOR, model_color)
+        # Same model both halves -> same fill; the hatch on the right marks + skill.
+        render_split(ax, positions, data_left,  "left",  FILL[model], ink=INK[model])
+        render_split(ax, positions, data_right, "right", FILL[model],
+                     ink=INK[model], hatch=SKILL_HATCH)
+        annotate_halves(ax, positions, data_left, data_right, INK[model], INK[model])
 
         ax.axhline(T_SOLVED, color="#1a9850", linestyle=":", linewidth=0.8, alpha=0.5)
         ax.axhline(T_FAIL,   color="#b2182b", linestyle=":", linewidth=0.8, alpha=0.5)
@@ -153,8 +169,10 @@ def plot_rq1(version: str):
         # model, so a shared legend could not be colour-correct for both. Anchored above the
         # axes because the solved-% labels sit inside them at y=1.04 (ylim reaches 1.18).
         legend_handles = [
-            Patch(facecolor=BASELINE_COLOR, alpha=FILL_ALPHA, label="baseline (no-skill, left)"),
-            Patch(facecolor=model_color,    alpha=FILL_ALPHA, label=f"skill-v{version}-sys (right)"),
+            Patch(facecolor=FILL[model], alpha=FILL_ALPHA, edgecolor=FILL[model],
+                  label="baseline (no-skill, left)"),
+            Patch(facecolor=FILL[model], alpha=FILL_ALPHA, hatch=SKILL_HATCH,
+                  edgecolor=INK[model], label=f"skill-v{version}-sys (right)"),
         ]
         ax.legend(handles=legend_handles, loc="lower center",
                   bbox_to_anchor=(0.5, 1.0), ncol=2, columnspacing=2.0,
