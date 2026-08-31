@@ -43,9 +43,22 @@ FIG_DIR     = os.path.join(os.path.dirname(__file__), "..", "docs", "figures",
 BUCKETS = ["func", "sytx", "sytx+func", "text",
            "text+func", "text+sytx", "text+sytx+func"]
 
-QWEN_COLOR     = "#4575b4"
-APERTUS_COLOR  = "#d6604d"
-BASELINE_COLOR = "#888888"
+# Per-series palette (#123). Colour follows the SERIES, not its role in a given
+# figure, so the same model+condition is the same colour in every diagram:
+#   Apertus-8B + skill  = magenta   Apertus-70B baseline = #b2182b
+#   Qwen3-8B   + skill  = cyan      Qwen3-32B   baseline = #2166ac
+# The two baseline hexes are the ones plot_baseline_violin_scaling.py already used.
+QWEN_SKILL_COLOR    = "#00b8d4"   # cyan
+APERTUS_SKILL_COLOR = "#d926c9"   # magenta
+QWEN_32B_COLOR      = "#2166ac"
+APERTUS_70B_COLOR   = "#b2182b"
+
+# Fills are drawn at 0.8, not 0.7 (#123). At 0.7 the ~30% white blend collapsed the
+# hue separation of the two same-family pairings this palette creates -- magenta beside
+# red, cyan beside blue -- to OKLab dE 12.0 and 15.3, under the 15 normal-vision floor.
+# 0.8 restores them to 19.4 and 17.7. The halves never overlap, so the transparency was
+# only softening the fill, never compositing.
+FILL_ALPHA = 0.8
 
 T_SOLVED = 0.8
 T_FAIL   = 0.05
@@ -60,16 +73,19 @@ VERSION = "2.1"
 # a target. 6 fits that float just as well and keeps all four PDFs the same size.
 FIGSIZE = (12, 6)
 
-# (family, small label, small file, large label, large file, small colour, out name)
+# (family, small label, small file, large label, large file, small colour,
+#  large colour, out name)
 FIGURES = [
     ("Apertus",
      "Apertus-8B",  "pilot_results_apertus_v2.1_python_tiny.jsonl",
      "Apertus-70B", "apertus-70b_baseline_python_tiny.jsonl",
-     APERTUS_COLOR, "skill_vs_scale_violin_apertus_v2.1_vs_70b.png"),
+     APERTUS_SKILL_COLOR, APERTUS_70B_COLOR,
+     "skill_vs_scale_violin_apertus_v2.1_vs_70b.png"),
     ("Qwen3",
      "Qwen3-8B",  "pilot_results_qwen3_v2.1_python_tiny.jsonl",
      "Qwen3-32B", "pilot_results_qwen3-32b_baseline_python_tiny_rtx.jsonl",
-     QWEN_COLOR, "skill_vs_scale_violin_qwen3_v2.1_vs_32b.png"),
+     QWEN_SKILL_COLOR, QWEN_32B_COLOR,
+     "skill_vs_scale_violin_qwen3_v2.1_vs_32b.png"),
 ]
 
 
@@ -110,7 +126,7 @@ def render_split(ax, positions, data, side, color):
             verts[:, 0] = np.maximum(verts[:, 0], x_center)
         body.set_facecolor(color)
         body.set_edgecolor(color)
-        body.set_alpha(0.7)
+        body.set_alpha(FILL_ALPHA)
         body.set_linewidth(1.0)
     if "cmedians" in parts:
         segs = parts["cmedians"].get_segments()
@@ -148,7 +164,7 @@ def annotate_halves(ax, positions, data_left, data_right, color_left, color_righ
 
 
 def plot_family(family, small_label, small_file, large_label, large_file,
-                small_color, out_name):
+                small_color, large_color, out_name):
     positions = list(range(len(BUCKETS)))
 
     left  = load_max_scores(os.path.join(RESULTS_DIR, small_file),
@@ -161,8 +177,8 @@ def plot_family(family, small_label, small_file, large_label, large_file,
     fig, ax = plt.subplots(figsize=FIGSIZE)
 
     render_split(ax, positions, data_left,  "left",  small_color)
-    render_split(ax, positions, data_right, "right", BASELINE_COLOR)
-    annotate_halves(ax, positions, data_left, data_right, small_color, BASELINE_COLOR)
+    render_split(ax, positions, data_right, "right", large_color)
+    annotate_halves(ax, positions, data_left, data_right, small_color, large_color)
 
     ax.axhline(T_SOLVED, color="#1a9850", linestyle=":", linewidth=0.8, alpha=0.5)
     ax.axhline(T_FAIL,   color="#b2182b", linestyle=":", linewidth=0.8, alpha=0.5)
@@ -185,9 +201,9 @@ def plot_family(family, small_label, small_file, large_label, large_file,
     # the axes, not inside them: the solved-% labels sit at y=1.04 and ylim
     # reaches 1.18, so an in-axes legend would land on top of them.
     legend_handles = [
-        Patch(facecolor=small_color,    alpha=0.7,
+        Patch(facecolor=small_color,    alpha=FILL_ALPHA,
               label=f"{small_label} + skill-v{VERSION}-sys (left half)"),
-        Patch(facecolor=BASELINE_COLOR, alpha=0.7,
+        Patch(facecolor=large_color,    alpha=FILL_ALPHA,
               label=f"{large_label} no-skill (right half)"),
     ]
     ax.legend(handles=legend_handles, loc="lower center",

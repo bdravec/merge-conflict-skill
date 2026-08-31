@@ -34,6 +34,10 @@ BUCKETS = ["func", "sytx", "sytx+func", "text",
 T_SOLVED = 0.8
 T_FAIL   = 0.05
 
+# 0.8 rather than 0.7, matching the other violin scripts (#123). Colours here are
+# unchanged -- this file is where the two baseline hexes came from.
+FILL_ALPHA = 0.8
+
 # Each pair: (family_title, out_name, [(label, fname, color, side), ...])
 # Same hue per family, light = small / dark = large.
 PAIRS = [
@@ -96,7 +100,7 @@ def plot_pair(family, out_name, pilots):
                 verts[:, 0] = np.maximum(verts[:, 0], x_center)
             body.set_facecolor(color)
             body.set_edgecolor(color)
-            body.set_alpha(0.7)
+            body.set_alpha(FILL_ALPHA)
             body.set_linewidth(1.0)
         if "cmedians" in parts:
             segs = parts["cmedians"].get_segments()
@@ -146,8 +150,8 @@ def plot_pair(family, out_name, pilots):
     # ABOVE the axes, not inside them: the solved-% labels are drawn at y=1.04 and ylim
     # runs to 1.18, so an in-axes legend would land on top of them.
     legend_handles = [
-        Patch(facecolor=c_small, alpha=0.7, label=f"{pilots[0][0]} (left half)"),
-        Patch(facecolor=c_large, alpha=0.7, label=f"{pilots[1][0]} (right half)"),
+        Patch(facecolor=c_small, alpha=FILL_ALPHA, label=f"{pilots[0][0]} (left half)"),
+        Patch(facecolor=c_large, alpha=FILL_ALPHA, label=f"{pilots[1][0]} (right half)"),
     ]
     ax.legend(handles=legend_handles, loc="lower center",
               bbox_to_anchor=(0.5, 1.0), ncol=2, columnspacing=2.0,

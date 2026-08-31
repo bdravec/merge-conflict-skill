@@ -36,14 +36,21 @@ MODELS = [
     ("Apertus-8B",
      "pilot_results_apertus_baseline_python_tiny.jsonl",
      "pilot_results_apertus_v{ver}_python_tiny.jsonl",
-     "#d6604d"),
+     "#d926c9"),   # magenta: Apertus-8B + skill (#123)
     ("Qwen3-8B",
      "pilot_results_qwen3_baseline_python_tiny.jsonl",
      "pilot_results_qwen3_v{ver}_python_tiny.jsonl",
-     "#4575b4"),
+     "#00b8d4"),   # cyan: Qwen3-8B + skill (#123)
 ]
 
 BASELINE_COLOR = "#888888"
+
+# 0.8 rather than 0.7, matching plot_skill_vs_scale_violin.py (#123): the white blend
+# at 0.7 washed out the new magenta/cyan fills.
+# NOTE: cyan against this grey is OKLab dE 13.4, under the 15 normal-vision floor
+# (CVD 8.6 clears the 8 floor). Acceptable here only because the split violin encodes
+# identity by left/right position as well, and the legend names the halves.
+FILL_ALPHA = 0.8
 
 T_SOLVED = 0.8
 T_FAIL   = 0.05
@@ -80,7 +87,7 @@ def render_split(ax, positions, data, side: str, color: str):
             verts[:, 0] = np.maximum(verts[:, 0], x_center)
         body.set_facecolor(color)
         body.set_edgecolor(color)
-        body.set_alpha(0.7)
+        body.set_alpha(FILL_ALPHA)
         body.set_linewidth(1.0)
     if "cmedians" in parts:
         segs = parts["cmedians"].get_segments()
@@ -146,8 +153,8 @@ def plot_rq1(version: str):
         # model, so a shared legend could not be colour-correct for both. Anchored above the
         # axes because the solved-% labels sit inside them at y=1.04 (ylim reaches 1.18).
         legend_handles = [
-            Patch(facecolor=BASELINE_COLOR, alpha=0.7, label="baseline (no-skill, left)"),
-            Patch(facecolor=model_color,    alpha=0.7, label=f"skill-v{version}-sys (right)"),
+            Patch(facecolor=BASELINE_COLOR, alpha=FILL_ALPHA, label="baseline (no-skill, left)"),
+            Patch(facecolor=model_color,    alpha=FILL_ALPHA, label=f"skill-v{version}-sys (right)"),
         ]
         ax.legend(handles=legend_handles, loc="lower center",
                   bbox_to_anchor=(0.5, 1.0), ncol=2, columnspacing=2.0,
